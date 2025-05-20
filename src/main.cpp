@@ -35,20 +35,22 @@ int main() {
     InitQuad();
     CreateFBO(512, 512);  // default size
 
-    std::vector<std::unique_ptr<ShaderParam::Param>> params;
-    params.push_back(std::make_unique<ShaderParam::Float<ShaderParam::Widget::Slider>>("parmates", 0, 10, 5));
-    params.push_back(std::make_unique<ShaderParam::Float<ShaderParam::Widget::Field>>("parmate", 0, 10, 5));
-    params.push_back(std::make_unique<ShaderParam::Integer<ShaderParam::Widget::Slider>>("parmat", 0, 10, 5));
-    params.push_back(std::make_unique<ShaderParam::Integer<ShaderParam::Widget::Field>>("parma", 0, 10, 5));
+    ShaderParam::Integer<ShaderParam::WidgetKind::Slider> int_slider("int slider", 0, 10, 0);
+    ShaderParam::Integer<ShaderParam::WidgetKind::Field> int_field("int field", 0, 10, 0);
+
+    ShaderParam::Float<ShaderParam::WidgetKind::Slider> float_slider("float slider", 0, 10, 0);
+    ShaderParam::Float<ShaderParam::WidgetKind::Field> float_field("float field", 0, 10, 0);
 
 
-    params.push_back([]() {
-        auto f = std::make_unique<ShaderParam::Feature<ShaderParam::Widget::Checkbox>>("parm", false);
-        f->add_child<ShaderParam::Float<ShaderParam::Widget::Slider>>("paa", 0, 10, 5);
-        return f;
-    }());
-    // params.push_back(f);
+    // ShaderParam::WidgetGroup params(int_slider, int_field, float_slider, float_field);
+    // ShaderParam::Feature<ShaderParam::WidgetKind::Checkbox, decltype(params)> enable("enable", false, params);
+    // ShaderParam::Feature<ShaderParam::WidgetKind::Checkbox, void> enable("enable", false);
 
+    ShaderParam::WidgetGroup int_params(int_slider, int_field);
+    ShaderParam::WidgetGroup float_params(float_slider, float_field);
+
+    ShaderParam::Choice<ShaderParam::WidgetKind::Dropdown, void, decltype(int_params), decltype(float_params)>
+        enable("number type", 0, {"none", "int", "float"}, std::monostate{}, int_params, float_params);
 
 
     auto start = std::chrono::steady_clock::now();
@@ -70,7 +72,7 @@ int main() {
 
         create_window(prog, time);
 
-        ShaderParam::window(params);
+        ShaderParam::window<decltype(enable)>(enable);
 
         // Render ImGui
         ImGui::Render();

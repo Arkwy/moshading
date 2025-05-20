@@ -3,85 +3,55 @@
 
 #include <imgui.h>
 
-#include <algorithm>
-#include <cstddef>
-#include <memory>
-#include <stdexcept>
+#include <iostream>
+#include <optional>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
-#include <variant>
-#include <vector>
-
-// Base template: false
-template <typename T, typename Variant>
-struct is_in_variant : std::false_type {};
-
-// Specialization for std::variant
-template <typename T, typename... Ts>
-struct is_in_variant<T, std::variant<Ts...>> : std::disjunction<std::is_same<T, Ts>...> {};
-
-// Concept using "requires"
-template <typename T, typename Variant>
-concept InVariant = is_in_variant<T, Variant>::value;
-
 
 namespace ShaderParam {
 
-enum class Widget {
+enum class WidgetKind {
     Slider,
     Field,
     Checkbox,
     Dropdown,
 };
 
-template <Widget W>
-struct Feature;
 
-template <Widget W>
-struct Float;
-
-template <Widget W>
-struct Integer;
-
-template <Widget W>
-struct Choice;
-
-template <Widget W>
-struct Feature;
-
-
-using ParamVariant = std::variant<
-    Float<Widget::Slider>,
-    Float<Widget::Field>,
-
-    Integer<Widget::Slider>,
-    Integer<Widget::Field>,
-
-    Feature<Widget::Checkbox>,
-
-    Choice<Widget::Dropdown>>;
-
-
-struct Param {
-    virtual void display() = 0;
-    virtual ~Param() = default;
-
-  protected:
-    Param() = default;
-
-  private:
-    std::string name;
+template <typename T>
+concept Widget = requires(T t) {
+    { t.display() } -> std::same_as<void>;
 };
 
-template <Widget W>
-struct Float : public Param {
-    static_assert(is_in_variant<Float<W>, ParamVariant>::value);
 
+template <Widget... Ws>
+struct WidgetGroup {
+    static constexpr size_t size = sizeof...(Ws);
+
+    std::tuple<Ws&...> widgets;
+
+    WidgetGroup(Ws&... widgets) : widgets(widgets...) {}
+
+    void display() {
+        std::apply([](auto&... widget) { (widget.display(), ...); }, widgets);
+    }
+};  // WidgetGroup is itself a widget
+
+
+template <typename T>
+concept WidgetGroupType =
+    requires { []<Widget... Ws>(WidgetGroup<Ws...>*) {}(std::declval<T*>()); } || std::is_same_v<T, void>;
+
+
+
+template <WidgetKind W>
+struct Float {
     Float(const std::string& name, const float& min, const float& max, const float& initial_value)
         : name(name), state(initial_value), min(min), max(max) {}
 
-    void display() override;
+    void display();
 
   private:
     std::string name;
@@ -91,14 +61,16 @@ struct Float : public Param {
     float max;
 };
 
-template <Widget W>
-struct Integer : public Param {
-    static_assert(is_in_variant<Integer<W>, ParamVariant>::value);
 
+
+template <WidgetKind W>
+struct Integer {
     Integer(const std::string& name, const int& min, const int& max, const int& initial_value)
         : name(name), state(initial_value), min(min), max(max) {}
 
-    void display() override;
+    Integer(const Integer<W>& other) { std::cout << "copy !!! ò_ó" << std::endl; }
+
+    void display();
 
   private:
     std::string name;
@@ -108,66 +80,108 @@ struct Integer : public Param {
     int max;
 };
 
-template <Widget W>
-struct Feature : public Param {
-    static_assert(is_in_variant<Feature<W>, ParamVariant>::value);
 
-    Feature(const std::string& name, const bool& initial_state) : name(name), state(initial_state) {}
 
-    void display() override;
+template <typename T>
+using optional_ref = std::conditional_t<std::is_void_v<T>, std::monostate, std::optional<std::reference_wrapper<T>>>;
 
-    template <typename P, typename... Args>
-    void add_child(Args&&... args) {
-        childs.push_back(std::make_unique<P>(args...));
+
+template <typename OptRef>
+void display_if_present(OptRef& maybe_ref) {
+    if constexpr (!std::is_same_v<std::remove_const_t<OptRef>, std::monostate>) {
+        if (maybe_ref) maybe_ref->get().display();
     }
+}
 
-  private:
-    std::string name;
-    bool state;
-
-    std::vector<std::unique_ptr<Param>> childs;
-};
-
-template <Widget W>
-struct Choice : public Param {
-    static_assert(is_in_variant<Choice<W>, ParamVariant>::value);
-
-    Choice(const std::string& name, const size_t& initial_state_idx, const std::vector<std::string>& values)
-        : name(name), state(initial_state_idx), values(values), childs(values.size()) {}
-
-    void display() override;
-
-    template <typename P, typename... Args>
-    void add_child(size_t index, Args&&... args) {
-        if (index >= values.size()) {
-            throw std::runtime_error("Child index too high."); // TODO: replace by a warning and return 
-        }
-        childs.at(index).push_back(std::make_unique<P>(std::forward(args)...));
-    }
-
-    template <typename P, typename... Args>
-    void add_child(std::string value, Args&&... args) {
-        auto it = std::find(values.begin(), values.end(), value);
-        if (it != values.end()) {
-            childs.at(it - values.begin()).push_back(std::make_unique<P>(std::forward(args)...));
+template <size_t I = 0, typename... OptRefs>
+static void display_indexed(size_t index, const std::tuple<OptRefs...>& t) {
+    if constexpr (I < sizeof...(OptRefs)) {
+        if (index == I) {
+            display_if_present(std::get<I>(t));
         } else {
-            throw std::runtime_error("Item no found."); // TODO: replace by a warning and return 
+            display_indexed<I + 1>(index, t);
         }
-        
+    }
+}
+
+
+template <WidgetKind W, WidgetGroupType Childs = void>
+struct Feature {
+    const std::string name;
+    optional_ref<Childs> childs;
+
+    Feature(const std::string& name, const bool& initial_state)
+        requires std::is_same_v<Childs, void>
+    : name(name), childs(std::monostate{}), state(initial_state) {}
+
+    Feature(const std::string& name, const bool& initial_state, const optional_ref<Childs>& childs)
+        requires(!std::is_same_v<Childs, void>)
+        : name(name), childs(childs), state(initial_state) {}
+
+
+    bool get_state() const { return state; }
+
+    void display()
+        requires(W == WidgetKind::Checkbox)
+    {
+        ImGui::Checkbox(name.c_str(), &state);
+        if (state) display_if_present(childs);
     }
 
   private:
-    std::string name;
-    size_t state;
-
-    std::vector<std::string> values;
-    std::vector<std::vector<std::unique_ptr<Param>>> childs;
+    bool state;
 };
 
-template <typename P, typename... Args>
-void add_child();
 
-void window(std::vector<std::unique_ptr<Param>>& params);
+
+template <WidgetKind W, WidgetGroupType... Childs>
+struct Choice {
+    const std::string name;
+    const std::array<std::string, sizeof...(Childs)> values;
+    const std::tuple<optional_ref<Childs>...> childs;
+
+    Choice(
+        const std::string& name,
+        const size_t& initial_state_idx,
+        const std::array<std::string, sizeof...(Childs)>& values,
+        const optional_ref<Childs>&... childs
+    )
+        : name(name), values(values), childs(childs...), state(initial_state_idx) {}
+
+    Choice(
+        const std::string& name,
+        const size_t& initial_state_idx,
+        const std::array<std::string, sizeof...(Childs)>& values
+    )
+        : name(name), values(values), childs(), state(initial_state_idx) {}
+
+    void display()
+        requires(W == WidgetKind::Dropdown)
+    {
+        if (ImGui::BeginCombo(name.c_str(), values[state].c_str())) {
+            for (int i = 0; i < values.size(); i++) {
+                const bool is_selected = (i == state);
+
+                if (ImGui::Selectable(values[i].c_str(), is_selected)) state = i;
+
+                if (is_selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+        display_indexed(state, childs);
+    }
+
+
+  private:
+    size_t state;
+};
+
+template <Widget W>
+void window(W& params) {
+    params.display();
+}
 
 }  // namespace ShaderParam
 
