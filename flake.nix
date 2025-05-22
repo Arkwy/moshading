@@ -75,8 +75,10 @@
                   cmake
 
                   # imgui
-                  # imgui # using
+                  # imgui # using submodule instead
                   emscripten
+                  glfw
+
                   # wgpu-native + rust (to build wgpu-native) + dep
                   rustToolchain
                   openssl
