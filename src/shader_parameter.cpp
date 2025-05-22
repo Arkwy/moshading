@@ -4,7 +4,7 @@
 
 #include "shader_parameter.hpp"
 
-using namespace ShaderParam;
+using namespace UserParam;
 
 
 template <>

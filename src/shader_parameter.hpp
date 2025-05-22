@@ -10,7 +10,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace ShaderParam {
+namespace UserParam {
 
 enum class WidgetKind {
     Slider,
@@ -48,36 +48,34 @@ concept WidgetGroupType =
 
 template <WidgetKind W>
 struct Float {
-    Float(const std::string& name, const float& min, const float& max, const float& initial_value)
-        : name(name), state(initial_value), min(min), max(max) {}
+    const std::string name;
+    const float min;
+    const float max;
 
-    void display();
-
-  private:
-    std::string name;
     float state;
 
-    float min;
-    float max;
+    Float(const std::string& name, const float& min, const float& max, const float& initial_value)
+        : name(name), min(min), max(max), state(initial_value) {}
+
+    void display();
 };
 
 
 
 template <WidgetKind W>
 struct Integer {
+    const std::string name;
+    const int min;
+    const int max;
+
+    int state;
+
     Integer(const std::string& name, const int& min, const int& max, const int& initial_value)
-        : name(name), state(initial_value), min(min), max(max) {}
+        : name(name), min(min), max(max), state(initial_value) {}
 
     Integer(const Integer<W>& other) { std::cout << "copy !!! ò_ó" << std::endl; }
 
     void display();
-
-  private:
-    std::string name;
-    int state;
-
-    int min;
-    int max;
 };
 
 
@@ -110,6 +108,8 @@ struct Feature {
     const std::string name;
     optional_ref<Childs> childs;
 
+    bool state;
+
     Feature(const std::string& name, const bool& initial_state)
         requires std::is_same_v<Childs, void>
     : name(name), childs(std::monostate{}), state(initial_state) {}
@@ -127,9 +127,6 @@ struct Feature {
         ImGui::Checkbox(name.c_str(), &state);
         if (state) display_if_present(childs);
     }
-
-  private:
-    bool state;
 };
 
 
@@ -139,6 +136,8 @@ struct Choice {
     const std::string name;
     const std::array<std::string, sizeof...(Childs)> values;
     const std::tuple<optional_ref<Childs>...> childs;
+
+    size_t state;
 
     Choice(
         const std::string& name,
@@ -172,10 +171,6 @@ struct Choice {
         }
         display_indexed(state, childs);
     }
-
-
-  private:
-    size_t state;
 };
 
 template <Widget W>

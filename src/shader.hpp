@@ -19,7 +19,6 @@ void CreateFBO(int w, int h);
 void RenderToFBO(GLuint prog, float time, int w, int h);
 
 // create imgui window containg shader
-void create_window(GLuint prog, float time);
-
+void create_window(GLuint prog, float time, const float& width, const float& height);
 
 #endif

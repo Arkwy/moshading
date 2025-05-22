@@ -1,2 +1,6 @@
 CompileFlags:
-  Add: [-std=c++23]
+  Add:
+    - -std=c++23
+    - -I/nix/store/lihizgvx9yrfr4qdd0iqcs2yhmbzcwyh-wgpu-native-24.0.3.1-dev/include/webgpu
+    - -L/nix/store/krd145aaag2pl9zpw30vsvv1kzalzkj2-wgpu-native-24.0.3.1/lib
+    - -lwgpu_native

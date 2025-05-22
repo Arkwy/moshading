@@ -1,5 +1,7 @@
 project('moshading', 'cpp', default_options : ['cpp_std=c++23'])
 
+wgpu_dep = declare_dependency()
+
 glfw_dep = dependency('glfw3')
 imgui_dep = dependency('imgui')
 gl_dep = dependency('gl', required: true)
@@ -12,8 +14,9 @@ files = [
 ]
 
 
-executable('moshading',
+executable(
+  'moshading',
   files,
-  dependencies: [glfw_dep, gl_dep, glew_dep, imgui_dep],
+  dependencies: [glfw_dep, gl_dep, glew_dep, imgui_dep, wgpu_dep],
   cpp_args: ['-g', '-O3'],
 )

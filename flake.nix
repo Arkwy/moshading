@@ -6,25 +6,10 @@
   outputs =
     { self, nixpkgs }:
     let
-      supportedSystems = [
-        "x86_64-linux"
-        "aarch64-linux"
-        "x86_64-darwin"
-        "aarch64-darwin"
-      ];
-      forEachSupportedSystem =
-        f:
-        nixpkgs.lib.genAttrs supportedSystems (
-          system:
-          f {
-            pkgs = import nixpkgs { inherit system; };
-          }
-        );
+      system = "x86_64-linux";
+      pkgs = import nixpkgs { inherit system; };
     in
     {
-      devShells = forEachSupportedSystem (
-        { pkgs }:
-        {
           default =
             pkgs.mkShell.override
               {
@@ -35,14 +20,6 @@
                 packages = with pkgs; [
                   # c/c++
                   clang-tools
-                  codespell
-                  conan
-                  cppcheck
-                  doxygen
-                  gtest
-                  lcov
-                  vcpkg
-                  vcpkg-tool
                   gdb
                   valgrind
                   meson
@@ -53,16 +30,24 @@
 
                   # imgui
                   imgui
+                  wgpu-native
+                  emscripten
 
                   # correct lsp support
                   bear
 
                 ];
 
+                # TODO make this cleaner
                 shellHook = ''
+                  if [ ! -d $(pwd)/.emscripten_cache ]; then
+                    cp -R ${pkgs.emscripten}/share/emscripten/cache/ $(pwd)/.emscripten_cache
+                    chmod u+rwX -R $(pwd)/.emscripten_cache
+                  fi
+                  export EM_CACHE=$(pwd)/.emscripten_cache
+                  export CFLAGS="-I${pkgs.wgpu-native.dev}/include/webgpu";
+                  export LDFLAGS="-L${pkgs.wgpu-native.out}/lib -lwgpu_native";
                 '';
               };
-        }
-      );
     };
 }

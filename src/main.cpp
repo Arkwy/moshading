@@ -5,7 +5,6 @@
 #include <imgui_impl_opengl3.h>
 
 #include <chrono>
-#include <vector>
 
 #include "shader.hpp"
 #include "shader_parameter.hpp"
@@ -26,7 +25,6 @@ int main() {
     // Init ImGui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
     ImGui_ImplGlfw_InitForOpenGL(win, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
@@ -35,31 +33,35 @@ int main() {
     InitQuad();
     CreateFBO(512, 512);  // default size
 
-    ShaderParam::Integer<ShaderParam::WidgetKind::Slider> int_slider("int slider", 0, 10, 0);
-    ShaderParam::Integer<ShaderParam::WidgetKind::Field> int_field("int field", 0, 10, 0);
+    // UserParam::Integer<UserParam::WidgetKind::Slider> int_slider("int slider", 0, 10, 0);
+    // UserParam::Integer<UserParam::WidgetKind::Field> int_field("int field", 0, 10, 0);
 
-    ShaderParam::Float<ShaderParam::WidgetKind::Slider> float_slider("float slider", 0, 10, 0);
-    ShaderParam::Float<ShaderParam::WidgetKind::Field> float_field("float field", 0, 10, 0);
+    UserParam::Float<UserParam::WidgetKind::Slider> float_slider("float slider", 0, 1200, 0);
+    UserParam::Float<UserParam::WidgetKind::Field> float_field("float field", 0, 1200, 0);
 
 
-    // ShaderParam::WidgetGroup params(int_slider, int_field, float_slider, float_field);
-    // ShaderParam::Feature<ShaderParam::WidgetKind::Checkbox, decltype(params)> enable("enable", false, params);
-    // ShaderParam::Feature<ShaderParam::WidgetKind::Checkbox, void> enable("enable", false);
+    // UserParam::WidgetGroup params(int_slider, int_field, float_slider, float_field);
+    // UserParam::Feature<UserParam::WidgetKind::Checkbox, decltype(params)> enable("enable", false, params);
+    // UserParam::Feature<UserParam::WidgetKind::Checkbox, void> enable("enable", false);
 
-    ShaderParam::WidgetGroup int_params(int_slider, int_field);
-    ShaderParam::WidgetGroup float_params(float_slider, float_field);
+    // UserParam::WidgetGroup int_params(int_slider, int_field);
+    UserParam::WidgetGroup float_params(float_slider, float_field);
 
-    ShaderParam::Choice<ShaderParam::WidgetKind::Dropdown, void, decltype(int_params), decltype(float_params)>
-        enable("number type", 0, {"none", "int", "float"}, std::monostate{}, int_params, float_params);
+    // UserParam::Choice<UserParam::WidgetKind::Dropdown, void, decltype(int_params), decltype(float_params)>
+    //     enable("number type", 0, {"none", "int", "float"}, std::monostate{}, int_params, float_params);
 
 
     auto start = std::chrono::steady_clock::now();
     while (!glfwWindowShouldClose(win)) {
         glfwPollEvents();
 
-        int display_w, display_h;
-        glfwGetFramebufferSize(win, &display_w, &display_h);
-        glViewport(0, 0, display_w, display_h);
+        // WHY ????
+        // int display_w, display_h;
+
+        // glfwGetFramebufferSize(win, &display_w, &display_h);
+        // glViewport(0, 0, display_w, display_h);
+        // WHY ???? END
+        
         glClear(GL_COLOR_BUFFER_BIT);
 
         auto now = std::chrono::steady_clock::now();
@@ -70,9 +72,9 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        create_window(prog, time);
+        create_window(prog, time, float_slider.state, float_field.state);
 
-        ShaderParam::window<decltype(enable)>(enable);
+        UserParam::window(float_params);
 
         // Render ImGui
         ImGui::Render();

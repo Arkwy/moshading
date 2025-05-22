@@ -1,8 +1,8 @@
-#include <iostream>
+#include "shader.hpp"
 
 #include <imgui.h>
 
-#include "shader.hpp"
+#include <iostream>
 
 // Shader compiler
 GLuint CompileShader(GLenum type, const char* source) {
@@ -85,6 +85,10 @@ void CreateFBO(int w, int h) {
     glBindTexture(GL_TEXTURE_2D, tex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); // important for upscaling
+
+
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) std::cerr << "FBO incomplete\n";
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -103,20 +107,36 @@ void RenderToFBO(GLuint prog, float time, int w, int h) {
 
 
 
+void create_window(GLuint prog, float time, const float& width, const float& height) {
+    // Show shader in a window
+    ImGui::Begin("Shader Output");
+    ImVec2 region = ImGui::GetContentRegionAvail();
 
-void create_window(GLuint prog, float time) {
-        // Show shader in a window
-        ImGui::Begin("Shader Output");
-        ImVec2 region = ImGui::GetContentRegionAvail();
-        int w = static_cast<int>(region.x);
-        int h = static_cast<int>(region.y);
-        static int prevW = 0, prevH = 0;
-        if (w != prevW || h != prevH) {
-            CreateFBO(w, h);
-            prevW = w;
-            prevH = h;
-        }
-        RenderToFBO(prog, time, w, h);
-        ImGui::Image(tex, region, ImVec2(0,1), ImVec2(1,0));
-        ImGui::End();
+    static ImVec2 img_dim(0, 0);
+
+    if (img_dim.x != width || img_dim.y != height) {
+        img_dim.x = width;
+        img_dim.y = height;
+        if (img_dim.x != 0 && img_dim.y != 0)
+            CreateFBO(img_dim.x, img_dim.y);
+    }
+
+    RenderToFBO(prog, time, img_dim.x, img_dim.y);
+
+    ImVec2 ratios( region.x / img_dim.x, region.y / img_dim.y);
+
+    ImVec2 final_render_dim;
+    if (ratios.x < ratios.y) {
+        final_render_dim.x = ratios.x * img_dim.x;
+        final_render_dim.y = ratios.x * img_dim.y;
+    } else {
+        final_render_dim.x = ratios.y * img_dim.x;
+        final_render_dim.y = ratios.y * img_dim.y;
+    }
+
+    // Center drawing
+    ImGui::SetCursorPos(ImVec2(-(final_render_dim.x - region.x) * 0.5 + ImGui::GetCursorPosX(), -(final_render_dim.y - region.y)  * 0.5 + ImGui::GetCursorPosY()));
+
+    ImGui::Image(tex, final_render_dim, ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::End();
 }
