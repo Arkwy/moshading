@@ -1,5 +1,5 @@
 {
-  description = "A Nix-flake-based C/C++ development environment";
+  description = "A Nix-flake-based C/C++ development environment for wgpu-native applications";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
@@ -75,13 +75,9 @@
                   cmake
 
                   # imgui
-                  imgui
+                  # imgui # using
                   emscripten
-
-                  # correct lsp support
-                  bear
-
-                  # rust + wgpu-native
+                  # wgpu-native + rust (to build wgpu-native) + dep
                   rustToolchain
                   openssl
                   pkg-config
@@ -99,7 +95,6 @@
                   xorg.libXinerama
                   xorg.libXcursor
                   xorg.libXi
-
                   vulkan-loader
                   vulkan-tools
                   vulkan-headers

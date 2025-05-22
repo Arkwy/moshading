@@ -2,6 +2,5 @@
 .direnv/
 builds/
 imgui.ini
-imgui/
 .emscripten_cache/
 wgpu-native
