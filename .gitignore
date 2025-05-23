@@ -3,4 +3,3 @@
 builds/
 imgui.ini
 .emscripten_cache/
-wgpu-native
