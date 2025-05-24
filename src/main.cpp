@@ -245,11 +245,15 @@ int main(int, char**) {
         wgpu::raii::CommandBuffer cmd_buffer = encoder->finish(cmd_buffer_desc);
         wgpu::raii::Queue queue = wgpu_device->getQueue();
         queue->submit(1, &(*cmd_buffer));
+        // queue->release();
+        // cmd_buffer->release();
+        // pass->release();
+        // encoder->release();
+        // textureView->release();
 
 #ifndef __EMSCRIPTEN__
         // wgpuSwapChainPresent(wgpu_swap_chain); // TODO
 #endif
-
         wgpu_surface->present();
     }
 #ifdef __EMSCRIPTEN__
@@ -261,8 +265,11 @@ int main(int, char**) {
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
+    wgpu_surface->release(); // released manually as it must
+
     glfwDestroyWindow(window);
     glfwTerminate();
+
 
     return 0;
 }
