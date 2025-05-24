@@ -1,9 +1,7 @@
-#ifndef FRAME_H
-#define FRAME_H
+#pragma once
 
 #include <imgui.h>
 #include "state.hpp"
 
 void fill_frame(State& state);
 
-#endif

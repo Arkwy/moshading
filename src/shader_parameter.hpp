@@ -1,5 +1,4 @@
-#ifndef SHADER_PARAM_H
-#define SHADER_PARAM_H
+#pragma once
 
 #include <imgui.h>
 
@@ -179,5 +178,3 @@ void window(W& params) {
 }
 
 }  // namespace ShaderParam
-
-#endif

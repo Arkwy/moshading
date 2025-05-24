@@ -15,6 +15,7 @@ imgui_files = [
   imgui_dir / 'imgui_draw.cpp',
   imgui_dir / 'imgui_widgets.cpp',
   imgui_dir / 'imgui_tables.cpp',
+  imgui_dir / 'imgui_demo.cpp',
   imgui_dir / 'backends/imgui_impl_glfw.cpp',
   imgui_dir / 'backends/imgui_impl_wgpu.cpp',
 ]
@@ -22,8 +23,10 @@ imgui_files = [
 # Source files
 moshading_files = [
   'src/main.cpp',
-  'src/shader.cpp',
-  'src/shader_parameter.cpp',
+  # 'src/application.cpp',
+  # 'src/glfw3webgpu.cpp',
+  # 'src/shader.cpp',
+  # 'src/shader_parameter.cpp',
 ]
 
 files = moshading_files + imgui_files
@@ -33,7 +36,7 @@ executable(
   files,
   include_directories: [
     imgui_dir,
-    imgui_dir / 'backends',
+    'webgpu',
   ],
   dependencies: [
     glfw_dep,
@@ -41,5 +44,5 @@ executable(
     glew_dep,
   ],
   link_args: ['-lwgpu_native'],
-  cpp_args: ['-g', '-O3', '-DIMGUI_IMPL_WEBGPU_BACKEND_WGPU'],
+  cpp_args: ['-g', '-O3', '-DIMGUI_IMPL_WEBGPU_BACKEND_WGPU', '-DWEBGPU_BACKEND_WGPU'],
 )

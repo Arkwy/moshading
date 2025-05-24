@@ -1,0 +1,56 @@
+[
+  {
+    "directory": "/disks/ssd_0/coding_projects/shader/moshading/builds",
+    "command": "g++ -Imoshading.p -I. -I.. -I../imgui -I../webgpu -I/nix/store/cjcsw0z51jkx5980b37m0lgmfpv8b0l1-glfw-3.4/include -I/nix/store/y0c6p6cxq0nyh09lw0lpwps5i3dn1v6n-libglvnd-1.7.0-dev/include -I/nix/store/5k2v23sfcbrhslskqs31zj2d2gyacnyx-glew-2.2.0-dev/include -I/nix/store/brkawr94aa84kk80gybq1psmndb3sd1j-glu-9.0.3-dev/include -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++23 -O0 -g -g -O3 -DIMGUI_IMPL_WEBGPU_BACKEND_WGPU -DWEBGPU_CPP_IMPLEMENTATION -MD -MQ moshading.p/src_main.cpp.o -MF moshading.p/src_main.cpp.o.d -o moshading.p/src_main.cpp.o -c ../src/main.cpp",
+    "file": "../src/main.cpp",
+    "output": "moshading.p/src_main.cpp.o"
+  },
+  {
+    "directory": "/disks/ssd_0/coding_projects/shader/moshading/builds",
+    "command": "g++ -Imoshading.p -I. -I.. -I../imgui -I../webgpu -I/nix/store/cjcsw0z51jkx5980b37m0lgmfpv8b0l1-glfw-3.4/include -I/nix/store/y0c6p6cxq0nyh09lw0lpwps5i3dn1v6n-libglvnd-1.7.0-dev/include -I/nix/store/5k2v23sfcbrhslskqs31zj2d2gyacnyx-glew-2.2.0-dev/include -I/nix/store/brkawr94aa84kk80gybq1psmndb3sd1j-glu-9.0.3-dev/include -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++23 -O0 -g -g -O3 -DIMGUI_IMPL_WEBGPU_BACKEND_WGPU -DWEBGPU_CPP_IMPLEMENTATION -MD -MQ moshading.p/src_shader.cpp.o -MF moshading.p/src_shader.cpp.o.d -o moshading.p/src_shader.cpp.o -c ../src/shader.cpp",
+    "file": "../src/shader.cpp",
+    "output": "moshading.p/src_shader.cpp.o"
+  },
+  {
+    "directory": "/disks/ssd_0/coding_projects/shader/moshading/builds",
+    "command": "g++ -Imoshading.p -I. -I.. -I../imgui -I../webgpu -I/nix/store/cjcsw0z51jkx5980b37m0lgmfpv8b0l1-glfw-3.4/include -I/nix/store/y0c6p6cxq0nyh09lw0lpwps5i3dn1v6n-libglvnd-1.7.0-dev/include -I/nix/store/5k2v23sfcbrhslskqs31zj2d2gyacnyx-glew-2.2.0-dev/include -I/nix/store/brkawr94aa84kk80gybq1psmndb3sd1j-glu-9.0.3-dev/include -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++23 -O0 -g -g -O3 -DIMGUI_IMPL_WEBGPU_BACKEND_WGPU -DWEBGPU_CPP_IMPLEMENTATION -MD -MQ moshading.p/src_shader_parameter.cpp.o -MF moshading.p/src_shader_parameter.cpp.o.d -o moshading.p/src_shader_parameter.cpp.o -c ../src/shader_parameter.cpp",
+    "file": "../src/shader_parameter.cpp",
+    "output": "moshading.p/src_shader_parameter.cpp.o"
+  },
+  {
+    "directory": "/disks/ssd_0/coding_projects/shader/moshading/builds",
+    "command": "g++ -Imoshading.p -I. -I.. -I../imgui -I../webgpu -I/nix/store/cjcsw0z51jkx5980b37m0lgmfpv8b0l1-glfw-3.4/include -I/nix/store/y0c6p6cxq0nyh09lw0lpwps5i3dn1v6n-libglvnd-1.7.0-dev/include -I/nix/store/5k2v23sfcbrhslskqs31zj2d2gyacnyx-glew-2.2.0-dev/include -I/nix/store/brkawr94aa84kk80gybq1psmndb3sd1j-glu-9.0.3-dev/include -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++23 -O0 -g -g -O3 -DIMGUI_IMPL_WEBGPU_BACKEND_WGPU -DWEBGPU_CPP_IMPLEMENTATION -MD -MQ moshading.p/imgui_imgui.cpp.o -MF moshading.p/imgui_imgui.cpp.o.d -o moshading.p/imgui_imgui.cpp.o -c ../imgui/imgui.cpp",
+    "file": "../imgui/imgui.cpp",
+    "output": "moshading.p/imgui_imgui.cpp.o"
+  },
+  {
+    "directory": "/disks/ssd_0/coding_projects/shader/moshading/builds",
+    "command": "g++ -Imoshading.p -I. -I.. -I../imgui -I../webgpu -I/nix/store/cjcsw0z51jkx5980b37m0lgmfpv8b0l1-glfw-3.4/include -I/nix/store/y0c6p6cxq0nyh09lw0lpwps5i3dn1v6n-libglvnd-1.7.0-dev/include -I/nix/store/5k2v23sfcbrhslskqs31zj2d2gyacnyx-glew-2.2.0-dev/include -I/nix/store/brkawr94aa84kk80gybq1psmndb3sd1j-glu-9.0.3-dev/include -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++23 -O0 -g -g -O3 -DIMGUI_IMPL_WEBGPU_BACKEND_WGPU -DWEBGPU_CPP_IMPLEMENTATION -MD -MQ moshading.p/imgui_imgui_draw.cpp.o -MF moshading.p/imgui_imgui_draw.cpp.o.d -o moshading.p/imgui_imgui_draw.cpp.o -c ../imgui/imgui_draw.cpp",
+    "file": "../imgui/imgui_draw.cpp",
+    "output": "moshading.p/imgui_imgui_draw.cpp.o"
+  },
+  {
+    "directory": "/disks/ssd_0/coding_projects/shader/moshading/builds",
+    "command": "g++ -Imoshading.p -I. -I.. -I../imgui -I../webgpu -I/nix/store/cjcsw0z51jkx5980b37m0lgmfpv8b0l1-glfw-3.4/include -I/nix/store/y0c6p6cxq0nyh09lw0lpwps5i3dn1v6n-libglvnd-1.7.0-dev/include -I/nix/store/5k2v23sfcbrhslskqs31zj2d2gyacnyx-glew-2.2.0-dev/include -I/nix/store/brkawr94aa84kk80gybq1psmndb3sd1j-glu-9.0.3-dev/include -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++23 -O0 -g -g -O3 -DIMGUI_IMPL_WEBGPU_BACKEND_WGPU -DWEBGPU_CPP_IMPLEMENTATION -MD -MQ moshading.p/imgui_imgui_widgets.cpp.o -MF moshading.p/imgui_imgui_widgets.cpp.o.d -o moshading.p/imgui_imgui_widgets.cpp.o -c ../imgui/imgui_widgets.cpp",
+    "file": "../imgui/imgui_widgets.cpp",
+    "output": "moshading.p/imgui_imgui_widgets.cpp.o"
+  },
+  {
+    "directory": "/disks/ssd_0/coding_projects/shader/moshading/builds",
+    "command": "g++ -Imoshading.p -I. -I.. -I../imgui -I../webgpu -I/nix/store/cjcsw0z51jkx5980b37m0lgmfpv8b0l1-glfw-3.4/include -I/nix/store/y0c6p6cxq0nyh09lw0lpwps5i3dn1v6n-libglvnd-1.7.0-dev/include -I/nix/store/5k2v23sfcbrhslskqs31zj2d2gyacnyx-glew-2.2.0-dev/include -I/nix/store/brkawr94aa84kk80gybq1psmndb3sd1j-glu-9.0.3-dev/include -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++23 -O0 -g -g -O3 -DIMGUI_IMPL_WEBGPU_BACKEND_WGPU -DWEBGPU_CPP_IMPLEMENTATION -MD -MQ moshading.p/imgui_imgui_tables.cpp.o -MF moshading.p/imgui_imgui_tables.cpp.o.d -o moshading.p/imgui_imgui_tables.cpp.o -c ../imgui/imgui_tables.cpp",
+    "file": "../imgui/imgui_tables.cpp",
+    "output": "moshading.p/imgui_imgui_tables.cpp.o"
+  },
+  {
+    "directory": "/disks/ssd_0/coding_projects/shader/moshading/builds",
+    "command": "g++ -Imoshading.p -I. -I.. -I../imgui -I../webgpu -I/nix/store/cjcsw0z51jkx5980b37m0lgmfpv8b0l1-glfw-3.4/include -I/nix/store/y0c6p6cxq0nyh09lw0lpwps5i3dn1v6n-libglvnd-1.7.0-dev/include -I/nix/store/5k2v23sfcbrhslskqs31zj2d2gyacnyx-glew-2.2.0-dev/include -I/nix/store/brkawr94aa84kk80gybq1psmndb3sd1j-glu-9.0.3-dev/include -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++23 -O0 -g -g -O3 -DIMGUI_IMPL_WEBGPU_BACKEND_WGPU -DWEBGPU_CPP_IMPLEMENTATION -MD -MQ moshading.p/imgui_backends_imgui_impl_glfw.cpp.o -MF moshading.p/imgui_backends_imgui_impl_glfw.cpp.o.d -o moshading.p/imgui_backends_imgui_impl_glfw.cpp.o -c ../imgui/backends/imgui_impl_glfw.cpp",
+    "file": "../imgui/backends/imgui_impl_glfw.cpp",
+    "output": "moshading.p/imgui_backends_imgui_impl_glfw.cpp.o"
+  },
+  {
+    "directory": "/disks/ssd_0/coding_projects/shader/moshading/builds",
+    "command": "g++ -Imoshading.p -I. -I.. -I../imgui -I../webgpu -I/nix/store/cjcsw0z51jkx5980b37m0lgmfpv8b0l1-glfw-3.4/include -I/nix/store/y0c6p6cxq0nyh09lw0lpwps5i3dn1v6n-libglvnd-1.7.0-dev/include -I/nix/store/5k2v23sfcbrhslskqs31zj2d2gyacnyx-glew-2.2.0-dev/include -I/nix/store/brkawr94aa84kk80gybq1psmndb3sd1j-glu-9.0.3-dev/include -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++23 -O0 -g -g -O3 -DIMGUI_IMPL_WEBGPU_BACKEND_WGPU -DWEBGPU_CPP_IMPLEMENTATION -MD -MQ moshading.p/imgui_backends_imgui_impl_wgpu.cpp.o -MF moshading.p/imgui_backends_imgui_impl_wgpu.cpp.o.d -o moshading.p/imgui_backends_imgui_impl_wgpu.cpp.o -c ../imgui/backends/imgui_impl_wgpu.cpp",
+    "file": "../imgui/backends/imgui_impl_wgpu.cpp",
+    "output": "moshading.p/imgui_backends_imgui_impl_wgpu.cpp.o"
+  }
+]

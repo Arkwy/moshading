@@ -74,6 +74,9 @@
                   glew
                   cmake
 
+                  # makes lsp work
+                  bear
+
                   # imgui
                   # imgui # using submodule instead
                   emscripten
