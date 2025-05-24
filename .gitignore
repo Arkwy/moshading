@@ -3,3 +3,4 @@
 builds/
 imgui.ini
 .emscripten_cache/
+.cache/
