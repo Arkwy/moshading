@@ -125,8 +125,8 @@ int main(int, char**) {
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-    // UserParam::Integer<UserParam::WidgetKind::Slider> int_slider("int slider", 0, 10, 0);
-    // UserParam::Integer<UserParam::WidgetKind::Field> int_field("int field", 0, 10, 0);
+    UserParam::Integer<UserParam::WidgetKind::Slider> int_slider("int slider", 0, 10, 0);
+    UserParam::Integer<UserParam::WidgetKind::Field> int_field("int field", 0, 10, 0);
 
     UserParam::Float<UserParam::WidgetKind::Slider> float_slider("float slider", 0, 1200, 0);
     UserParam::Float<UserParam::WidgetKind::Field> float_field("float field", 0, 1200, 0);
@@ -136,11 +136,11 @@ int main(int, char**) {
     // UserParam::Feature<UserParam::WidgetKind::Checkbox, decltype(params)> enable("enable", false, params);
     // UserParam::Feature<UserParam::WidgetKind::Checkbox, void> enable("enable", false);
 
-    // UserParam::WidgetGroup int_params(int_slider, int_field);
+    UserParam::WidgetGroup int_params(int_slider, int_field);
     UserParam::WidgetGroup float_params(float_slider, float_field);
 
-    // UserParam::Choice<UserParam::WidgetKind::Dropdown, void, decltype(int_params), decltype(float_params)>
-    //     enable("number type", 0, {"none", "int", "float"}, std::monostate{}, int_params, float_params);
+    UserParam::Choice<UserParam::WidgetKind::Dropdown, void, decltype(int_params), decltype(float_params)>
+        enable("number type", 0, {"none", "int", "float"}, std::monostate{}, int_params, float_params);
 
     // Main loop
 #ifdef __EMSCRIPTEN__
@@ -179,7 +179,7 @@ int main(int, char**) {
         ImGui_ImplWGPU_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        UserParam::window(float_params);
+        UserParam::window(enable);
 
 
         // Rendering

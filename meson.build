@@ -26,7 +26,7 @@ moshading_files = [
   # 'src/application.cpp',
   # 'src/glfw3webgpu.cpp',
   # 'src/shader.cpp',
-  # 'src/shader_parameter.cpp',
+  'src/shader_parameter.cpp',
 ]
 
 files = moshading_files + imgui_files
