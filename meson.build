@@ -1,48 +1,77 @@
 project('moshading', 'cpp', default_options : ['cpp_std=c++23'])
 
-# Dependencies
-glfw_dep = dependency('glfw3')
-gl_dep = dependency('gl', required: true)
-glew_dep = dependency('glew', required: true)
-
-# Declare the wgpu-native subproject
-wgpu_proj = subproject('wgpu-native')
+cpp = meson.get_compiler('cpp')
+is_wasm = cpp.get_id() == 'emscripten'
 
 # ImGui files
 imgui_dir = 'imgui'
 imgui_files = [
-  imgui_dir / 'imgui.cpp',
-  imgui_dir / 'imgui_draw.cpp',
-  imgui_dir / 'imgui_widgets.cpp',
-  imgui_dir / 'imgui_tables.cpp',
-  imgui_dir / 'imgui_demo.cpp',
-  imgui_dir / 'backends/imgui_impl_glfw.cpp',
-  imgui_dir / 'backends/imgui_impl_wgpu.cpp',
+    imgui_dir / 'imgui.cpp',
+    imgui_dir / 'imgui_draw.cpp',
+    imgui_dir / 'imgui_widgets.cpp',
+    imgui_dir / 'imgui_tables.cpp',
+    imgui_dir / 'imgui_demo.cpp',
+    imgui_dir / 'backends/imgui_impl_glfw.cpp',
+    imgui_dir / 'backends/imgui_impl_wgpu.cpp',
 ]
 
 # Source files
 moshading_files = [
   'src/main.cpp',
-  # 'src/application.cpp',
-  # 'src/glfw3webgpu.cpp',
-  # 'src/shader.cpp',
   'src/shader_parameter.cpp',
 ]
 
 files = moshading_files + imgui_files
 
-executable(
-  'moshading',
-  files,
-  include_directories: [
-    imgui_dir,
-    'webgpu',
-  ],
-  dependencies: [
-    glfw_dep,
-    gl_dep,
-    glew_dep,
-  ],
-  link_args: ['-lwgpu_native'],
-  cpp_args: ['-g', '-O3', '-DIMGUI_IMPL_WEBGPU_BACKEND_WGPU', '-DWEBGPU_BACKEND_WGPU'],
-)
+if is_wasm
+    emscripten_flags = [
+        '-sUSE_GLFW=3',
+        '-sUSE_WEBGPU=1',
+        '-sEXPORT_ALL=1', # TODO remove in release build
+        # '-sASYNCIFY',
+        '-sWASM=1',
+        '-sALLOW_MEMORY_GROWTH=1',
+        '-sNO_EXIT_RUNTIME=0',
+        '-sASSERTIONS=1',
+        '-sDISABLE_EXCEPTION_CATCHING=0',
+        '-sNO_FILESYSTEM=1',
+        # '--bind', # optional if using embind
+    ]
+
+    executable(
+        'moshading',
+        files,
+        include_directories: [
+            include_directories(imgui_dir),
+            include_directories('emscripten'),
+        ],
+        dependencies: [],
+        cpp_args: ['-g', '-O3', '-fexceptions'],
+        link_args: emscripten_flags,
+        install: false,
+    )
+else
+    glfw_dep = dependency('glfw3')
+    gl_dep = dependency('gl', required: true)
+    glew_dep = dependency('glew', required: true)
+
+    subproject('wgpu-native') # Make sure this exists or skip if not using native WebGPU
+
+    executable(
+        'moshading',
+        files,
+        include_directories: [
+            include_directories(imgui_dir),
+            include_directories('wgpu-native'),
+        ],
+        dependencies: [
+            glfw_dep,
+            gl_dep,
+            glew_dep,
+        ],
+        link_args: ['-lwgpu_native'],
+        cpp_args: ['-g', '-O3', '-DIMGUI_IMPL_WEBGPU_BACKEND_WGPU', '-DWEBGPU_BACKEND_WGPU'],
+        install: false,
+    )
+endif
+

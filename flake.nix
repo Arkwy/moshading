@@ -50,6 +50,9 @@
                 "rust-src"
                 "rustfmt"
               ];
+              targets = [
+                "wasm32-unknown-emscripten"
+              ];
             };
       };
 
@@ -148,14 +151,15 @@
                   in
                   (builtins.map (a: ''-I"${a}/include"'') [
                     # add dev libraries here (e.g. pkgs.libvmi.dev)
-                    pkgs.glibc.dev
+                    pkgs.glibc_multi.dev
                   ])
                   # Includes with special directory paths
                   ++ [
-                    ''-I"${pkgs.libclang.lib}/lib/clang/${clangMajorVersion}/include"''
-                    ''-I"${pkgs.glib.dev}/include/glib-2.0"''
-                    ''-I${pkgs.glib.out}/lib/glib-2.0/include/''
-                    ''-I${pkgs.wgpu-native.dev}/include/webgpu''
+                    ''-I${pkgs.libclang.lib}/lib/clang/${clangMajorVersion}/include''
+                    ''-I${pkgs.glibc_multi.dev}/include/glib-2.0''
+                    ''-I${pkgs.glibc_multi.out}/lib/glib-2.0/include/''
+                    # ''-I${pkgs.wgpu-native.dev}/include/webgpu''
+                    "-I${toString ./subprojects/wgpu-native}/ffi"
                   ];
               };
         }

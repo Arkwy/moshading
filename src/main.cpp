@@ -1,26 +1,22 @@
+#include <GLFW/glfw3.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_wgpu.h>
 #include <imgui.h>
 #include <stdio.h>
 
 #define WEBGPU_CPP_IMPLEMENTATION
-#include <webgpu-raii.hpp>
+#include <webgpu/webgpu-raii.hpp>
 
 #ifdef __EMSCRIPTEN__
     #include <emscripten.h>
     #include <emscripten/html5.h>
     #include <emscripten/html5_webgpu.h>
+#else
+    #define GLFW_EXPOSE_NATIVE_WAYLAND
+    #define GLFW_NATIVE_INCLUDE_NONE
+    #include <GLFW/glfw3native.h>
 #endif
 
-#include <GLFW/glfw3.h>
-#define GLFW_EXPOSE_NATIVE_WAYLAND
-#define GLFW_NATIVE_INCLUDE_NONE
-#include <GLFW/glfw3native.h>
-
-// This example can also compile and run with Emscripten! See 'Makefile.emscripten' for details.
-#ifdef __EMSCRIPTEN__
-    #include "../libs/emscripten/emscripten_mainloop_stub.h"  // TODO
-#endif
 
 #include "shader_parameter.hpp"
 
@@ -30,8 +26,8 @@ static wgpu::raii::Device wgpu_device;
 static wgpu::raii::Surface wgpu_surface;
 static wgpu::SurfaceConfiguration wgpu_surface_config;
 static wgpu::TextureFormat wgpu_preferred_fmt = WGPUTextureFormat_RGBA8Unorm;
-static int wgpu_swap_chain_width = 1280;
-static int wgpu_swap_chain_height = 720;
+// static int width = 1280;
+// static int height = 720;
 
 // Forward declarations
 static bool InitWGPU(GLFWwindow* window);
@@ -47,6 +43,100 @@ void framebufferResizeCallback(GLFWwindow* window, int newWidth, int newHeight) 
     wgpu_surface->configure(wgpu_surface_config);
 }
 
+#ifdef __EMSCRIPTEN__
+EM_BOOL resizeCallback(int eventType, const EmscriptenUiEvent *uiEvent, void *userData) {
+    int width = uiEvent->windowInnerWidth;
+    int height = uiEvent->windowInnerHeight;
+    printf("Window resized to: %d x %d\n", width, height);
+    return EM_TRUE;
+}
+
+void setupResizeCallback() {
+    emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr, 0, resizeCallback);
+}
+
+#endif
+
+template <UserParam::Widget W>
+struct State {
+    W& widget;
+    GLFWwindow* window;
+};
+
+template <typename State>
+void main_loop(void* arg_state) {
+    State* state = static_cast<State*>(arg_state);
+
+    glfwPollEvents();
+    if (glfwGetWindowAttrib(state->window, GLFW_ICONIFIED) != 0) {
+        ImGui_ImplGlfw_Sleep(10);
+        return;
+    }
+
+    // React to changes in screen size
+    int width, height;
+    glfwGetFramebufferSize(state->window, &width, &height);
+    // if (width != wgpu_swap_chain_width || height != wgpu_swap_chain_height) {
+    //     ImGui_ImplWGPU_InvalidateDeviceObjects();
+    //     // CreateSwapChain(width, height);
+    //     ImGui_ImplWGPU_CreateDeviceObjects();
+    // }
+
+    // Start the Dear ImGui frame
+    ImGui_ImplWGPU_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    UserParam::window(state->widget);
+
+
+    // Rendering
+    ImGui::Render();
+
+#ifdef IMGUI_IMPL_WEBGPU_BACKEND_DAWN
+    // Tick needs to be called in Dawn to display validation errors
+    wgpu_device->tick();
+#elifdef IMGUI_IMPL_WEBGPU_BACKEND_WGPU
+    wgpu_device->poll(false, nullptr);
+#endif
+
+
+    wgpu::SurfaceTexture surface_texture;
+    wgpu_surface->getCurrentTexture(&surface_texture);
+
+    wgpu::raii::TextureView textureView;
+    *textureView = wgpuTextureCreateView(surface_texture.texture, NULL);
+
+    wgpu::RenderPassColorAttachment color_attachments = {};
+    color_attachments.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
+    color_attachments.loadOp = WGPULoadOp_Clear;
+    color_attachments.storeOp = WGPUStoreOp_Store;
+    color_attachments.clearValue = {0, 100, 200};
+    color_attachments.view = *textureView;
+
+    wgpu::RenderPassDescriptor render_pass_desc = {};
+    render_pass_desc.colorAttachmentCount = 1;
+    render_pass_desc.colorAttachments = &color_attachments;
+    render_pass_desc.depthStencilAttachment = nullptr;
+
+    wgpu::CommandEncoderDescriptor enc_desc = {};
+    wgpu::raii::CommandEncoder encoder = wgpu_device->createCommandEncoder(enc_desc);
+
+    wgpu::raii::RenderPassEncoder pass = encoder->beginRenderPass(render_pass_desc);
+    ImGui_ImplWGPU_RenderDrawData(ImGui::GetDrawData(), *pass);
+    wgpuRenderPassEncoderEnd(*pass);
+
+    wgpu::CommandBufferDescriptor cmd_buffer_desc = {};
+    wgpu::raii::CommandBuffer cmd_buffer = encoder->finish(cmd_buffer_desc);
+    wgpu::raii::Queue queue = wgpu_device->getQueue();
+    queue->submit(1, &(*cmd_buffer));
+
+    #ifndef __EMSCRIPTEN__
+    wgpu_surface->present();
+    #endif
+}
+
+
+
 // Main code
 int main(int, char**) {
     glfwSetErrorCallback(glfw_error_callback);
@@ -56,8 +146,8 @@ int main(int, char**) {
     // This needs to be done explicitly later.
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     GLFWwindow* window = glfwCreateWindow(
-        wgpu_swap_chain_width,
-        wgpu_swap_chain_height,
+        100,
+        100,
         "Dear ImGui GLFW+WebGPU example",
         nullptr,
         nullptr
@@ -96,35 +186,6 @@ int main(int, char**) {
     init_info.DepthStencilFormat = WGPUTextureFormat_Undefined;
     ImGui_ImplWGPU_Init(&init_info);
 
-    // Load Fonts
-    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use
-    // ImGui::PushFont()/PopFont() to select them.
-    // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
-    // - If the file cannot be loaded, the function will return a nullptr. Please handle those errors in your
-    // application (e.g. use an assertion, or display an error and quit).
-    // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling
-    // ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
-    // - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use Freetype for higher quality font rendering.
-    // - Read 'docs/FONTS.md' for more instructions and details.
-    // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double
-    // backslash \\ !
-    // - Emscripten allows preloading a file or folder to be accessible at runtime. See Makefile for details.
-    // io.Fonts->AddFontDefault();
-#ifndef IMGUI_DISABLE_FILE_FUNCTIONS
-    // io.Fonts->AddFontFromFileTTF("fonts/segoeui.ttf", 18.0f);
-    // io.Fonts->AddFontFromFileTTF("fonts/DroidSans.ttf", 16.0f);
-    // io.Fonts->AddFontFromFileTTF("fonts/Roboto-Medium.ttf", 16.0f);
-    // io.Fonts->AddFontFromFileTTF("fonts/Cousine-Regular.ttf", 15.0f);
-    // io.Fonts->AddFontFromFileTTF("fonts/ProggyTiny.ttf", 10.0f);
-    // ImFont* font = io.Fonts->AddFontFromFileTTF("fonts/ArialUni.ttf", 18.0f, nullptr,
-    // io.Fonts->GetGlyphRangesJapanese()); IM_ASSERT(font != nullptr);
-#endif
-
-    // Our state
-    bool show_demo_window = true;
-    bool show_another_window = false;
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
     UserParam::Integer<UserParam::WidgetKind::Slider> int_slider("int slider", 0, 10, 0);
     UserParam::Integer<UserParam::WidgetKind::Field> int_field("int field", 0, 10, 0);
 
@@ -142,111 +203,23 @@ int main(int, char**) {
     UserParam::Choice<UserParam::WidgetKind::Dropdown, void, decltype(int_params), decltype(float_params)>
         enable("number type", 0, {"none", "int", "float"}, std::monostate{}, int_params, float_params);
 
+    State state = {.widget = enable, .window = window};
+
     // Main loop
 #ifdef __EMSCRIPTEN__
     // For an Emscripten build we are disabling file-system access, so let's not attempt to do a fopen() of the
     // imgui.ini file. You may manually call LoadIniSettingsFromMemory() to load settings from your own storage.
     io.IniFilename = nullptr;
-    EMSCRIPTEN_MAINLOOP_BEGIN
+    emscripten_set_main_loop_arg(main_loop<decltype(state)>, &state, 0, true);
 #else
-    while (!glfwWindowShouldClose(window))
+    while (!glfwWindowShouldClose(window)) main_loop<decltype(state)>(static_cast<void*>(&state));
 #endif
-    {
-        // Poll and handle events (inputs, window resize, etc.)
-        // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your
-        // inputs.
-        // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or
-        // clear/overwrite your copy of the mouse data.
-        // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or
-        // clear/overwrite your copy of the keyboard data. Generally you may always pass all inputs to dear imgui, and
-        // hide them from your application based on those two flags.
-        glfwPollEvents();
-        if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0) {
-            ImGui_ImplGlfw_Sleep(10);
-            continue;
-        }
-
-        // React to changes in screen size
-        int width, height;
-        glfwGetFramebufferSize((GLFWwindow*)window, &width, &height);
-        if (width != wgpu_swap_chain_width || height != wgpu_swap_chain_height) {
-            ImGui_ImplWGPU_InvalidateDeviceObjects();
-            // CreateSwapChain(width, height);
-            ImGui_ImplWGPU_CreateDeviceObjects();
-        }
-
-        // Start the Dear ImGui frame
-        ImGui_ImplWGPU_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-        UserParam::window(enable);
-
-
-        // Rendering
-        ImGui::Render();
-
-#ifdef IMGUI_IMPL_WEBGPU_BACKEND_DAWN
-        // Tick needs to be called in Dawn to display validation errors
-        wgpu_device->tick();
-#elifdef IMGUI_IMPL_WEBGPU_BACKEND_WGPU
-        wgpu_device->poll(false, nullptr);
-#endif
-
-        wgpu::SurfaceTexture surface_texture;
-        wgpu_surface->getCurrentTexture(&surface_texture);
-
-        wgpu::raii::TextureView textureView;
-        *textureView = wgpuTextureCreateView(surface_texture.texture, NULL);
-
-        wgpu::RenderPassColorAttachment color_attachments = {};
-        color_attachments.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
-        color_attachments.loadOp = WGPULoadOp_Clear;
-        color_attachments.storeOp = WGPUStoreOp_Store;
-        color_attachments.clearValue = {
-            clear_color.x * clear_color.w,
-            clear_color.y * clear_color.w,
-            clear_color.z * clear_color.w,
-            clear_color.w
-        };
-        color_attachments.view = *textureView;
-
-        wgpu::RenderPassDescriptor render_pass_desc = {};
-        render_pass_desc.colorAttachmentCount = 1;
-        render_pass_desc.colorAttachments = &color_attachments;
-        render_pass_desc.depthStencilAttachment = nullptr;
-
-        wgpu::CommandEncoderDescriptor enc_desc = {};
-        wgpu::raii::CommandEncoder encoder = wgpu_device->createCommandEncoder(enc_desc);
-
-        wgpu::raii::RenderPassEncoder pass = encoder->beginRenderPass(render_pass_desc);
-        ImGui_ImplWGPU_RenderDrawData(ImGui::GetDrawData(), *pass);
-        wgpuRenderPassEncoderEnd(*pass);
-
-        wgpu::CommandBufferDescriptor cmd_buffer_desc = {};
-        wgpu::raii::CommandBuffer cmd_buffer = encoder->finish(cmd_buffer_desc);
-        wgpu::raii::Queue queue = wgpu_device->getQueue();
-        queue->submit(1, &(*cmd_buffer));
-        // queue->release();
-        // cmd_buffer->release();
-        // pass->release();
-        // encoder->release();
-        // textureView->release();
-
-#ifndef __EMSCRIPTEN__
-        // wgpuSwapChainPresent(wgpu_swap_chain); // TODO
-#endif
-        wgpu_surface->present();
-    }
-#ifdef __EMSCRIPTEN__
-    EMSCRIPTEN_MAINLOOP_END;
-#endif
-
     // Cleanup
     ImGui_ImplWGPU_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
-    wgpu_surface->release(); // released manually as it must
+    wgpu_surface->release();  // released manually as it must
 
     glfwDestroyWindow(window);
     glfwTerminate();
@@ -267,24 +240,50 @@ static bool InitWGPU(GLFWwindow* window) {
     wgpu_instance = wgpu::createInstance();
 
 #ifdef __EMSCRIPTEN__
-    // wgpu_device = emscripten_webgpu_get_device();
-    // if (!wgpu_device) return false;
+    wgpu_device = wgpu::raii::Wrapper<wgpu::Device>(emscripten_webgpu_get_device());
+    if (!wgpu_device) return false;
+
+    // Setup the surface descriptor for HTML canvas
+    WGPUSurfaceDescriptorFromCanvasHTMLSelector html_surface_desc = {};
+    html_surface_desc.chain.sType = WGPUSType_SurfaceDescriptorFromCanvasHTMLSelector;
+    html_surface_desc.chain.next = nullptr;
+    html_surface_desc.selector = "#canvas";
+
+    WGPUSurfaceDescriptor surface_desc = {};
+    surface_desc.nextInChain = &html_surface_desc.chain;
+    surface_desc.label = NULL;
+
+    // Get surface via emscripten API
+    // wgpu_surface = wgpu_instance->createSurface(surface_desc);
+    wgpu_surface = wgpu::raii::Surface(wgpuInstanceCreateSurface(*wgpu_instance, &surface_desc));
+
+    // Set preferred format (no adapter needed in emscripten)
+    wgpu_preferred_fmt = wgpuSurfaceGetPreferredFormat(*wgpu_surface, nullptr);
+
+    // Get canvas size from GLFW
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+
+    // Configure surface
+    wgpu_surface_config.nextInChain = nullptr;
+    wgpu_surface_config.device = *wgpu_device;
+    wgpu_surface_config.format = wgpu_preferred_fmt;
+    wgpu_surface_config.usage = WGPUTextureUsage_RenderAttachment;
+    wgpu_surface_config.presentMode = WGPUPresentMode_Fifo;
+    wgpu_surface_config.width = width;
+    wgpu_surface_config.height = height;
+    wgpu_surface_config.viewFormatCount = 0;
+    wgpu_surface_config.viewFormats = nullptr;
+
+    wgpu_surface->configure(wgpu_surface_config);
+
+    setupResizeCallback();
 #else
+
     wgpu::raii::Adapter adapter = request_adapter(*wgpu_instance);
     if (!adapter) return false;
+
     wgpu_device = request_device(*adapter);
-#endif
-
-#ifdef __EMSCRIPTEN__
-    // wgpu::SurfaceDescriptorFromCanvasHTMLSelector html_surface_desc = {};
-    // html_surface_desc.selector = "#canvas";
-    // wgpu::SurfaceDescriptor surface_desc = {};
-    // surface_desc.nextInChain = &html_surface_desc;
-    // wgpu::Surface surface = instance.CreateSurface(&surface_desc);
-
-    // wgpu::Adapter adapter = {};
-    // wgpu_preferred_fmt = (WGPUTextureFormat)surface.GetPreferredFormat(adapter);
-#else
     struct wl_display* wayland_display = glfwGetWaylandDisplay();
     struct wl_surface* wayland_surface = glfwGetWaylandWindow(window);
 
@@ -303,11 +302,7 @@ static bool InitWGPU(GLFWwindow* window) {
 
     wgpu::SurfaceCapabilities sc;
     wgpu_surface->getCapabilities(*adapter, &sc);
-    // std::cout << std::hex;
-    // for (int i = 0; i < sc.presentModeCount; i++) {
-    //     std::cout << "0x" << sc.presentModes[i] << std::endl;
-    // }
-    // std::cout << std::dec;
+
     bool format_found = false;
     for (size_t i = 0; i < sc.formatCount; i++) {
         if (sc.formats[i] == WGPUTextureFormat_RGBA8Unorm) {
@@ -337,16 +332,3 @@ static bool InitWGPU(GLFWwindow* window) {
 
     return true;
 }
-
-// static void CreateSwapChain(int width, int height) {
-//     if (wgpu_swap_chain) wgpuSwapChainRelease(wgpu_swap_chain);
-//     wgpu_swap_chain_width = width;
-//     wgpu_swap_chain_height = height;
-//     WGPUSwapChainDescriptor swap_chain_desc = {};
-//     swap_chain_desc.usage = WGPUTextureUsage_RenderAttachment;
-//     swap_chain_desc.format = wgpu_preferred_fmt;
-//     swap_chain_desc.width = width;
-//     swap_chain_desc.height = height;
-//     swap_chain_desc.presentMode = WGPUPresentMode_Fifo;
-//     wgpu_swap_chain = wgpuDeviceCreateSwapChain(wgpu_device, wgpu_surface, &swap_chain_desc);
-// }
