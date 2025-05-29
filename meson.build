@@ -24,6 +24,9 @@ moshading_files = [
 files = moshading_files + imgui_files
 
 if is_wasm
+
+    files += 'src/app_web.cpp'
+
     emscripten_flags = [
         '-sUSE_GLFW=3',
         '-sUSE_WEBGPU=1',
@@ -56,6 +59,8 @@ else
     glew_dep = dependency('glew', required: true)
 
     subproject('wgpu-native') # Make sure this exists or skip if not using native WebGPU
+
+    files += 'src/app_native.cpp'
 
     executable(
         'moshading',
