@@ -3,6 +3,17 @@ project('moshading', 'cpp', default_options : ['cpp_std=c++23'])
 cpp = meson.get_compiler('cpp')
 is_wasm = cpp.get_id() == 'emscripten'
 
+
+# embed shaders in code
+embed_shaders = custom_target(
+    'embed_shaders',
+    output: ['shaders_code.cpp', 'shaders_code.hpp'],
+    command: ['python', meson.current_source_dir() / 'utils/embed_shaders.py', '@OUTPUT@', meson.current_source_dir() / 'shaders/'],
+    build_always_stale: true,
+)
+
+embed_shaders_dep = declare_dependency(sources: embed_shaders)
+
 # ImGui files
 imgui_dir = 'imgui'
 imgui_files = [
@@ -10,7 +21,6 @@ imgui_files = [
     imgui_dir / 'imgui_draw.cpp',
     imgui_dir / 'imgui_widgets.cpp',
     imgui_dir / 'imgui_tables.cpp',
-    imgui_dir / 'imgui_demo.cpp',
     imgui_dir / 'backends/imgui_impl_glfw.cpp',
     imgui_dir / 'backends/imgui_impl_wgpu.cpp',
 ]
@@ -19,13 +29,17 @@ imgui_files = [
 moshading_files = [
   'src/main.cpp',
   'src/shader_parameter.cpp',
+  'src/gpu_context.cpp',
+  'src/renderer.cpp',
+  'src/app.cpp',
+  embed_shaders[0],
 ]
 
 files = moshading_files + imgui_files
 
 if is_wasm
 
-    files += 'src/app_web.cpp'
+    files += 'src/renderer_web.cpp'
 
     emscripten_flags = [
         '-sUSE_GLFW=3',
@@ -60,7 +74,7 @@ else
 
     subproject('wgpu-native') # Make sure this exists or skip if not using native WebGPU
 
-    files += 'src/app_native.cpp'
+    files += 'src/renderer_native.cpp'
 
     executable(
         'moshading',
@@ -70,6 +84,7 @@ else
             include_directories('wgpu-native'),
         ],
         dependencies: [
+            embed_shaders_dep,
             glfw_dep,
             gl_dep,
             glew_dep,
@@ -79,4 +94,3 @@ else
         install: false,
     )
 endif
-

@@ -43,7 +43,6 @@
 #include <cassert>
 #include <cmath>
 #include <memory>
-#include <string_view>
 
 #if __EMSCRIPTEN__
 #include <emscripten.h>
@@ -658,7 +657,7 @@ ENUM(VertexFormat)
 	ENUM_ENTRY(Sint32x2, WGPUVertexFormat_Sint32x2)
 	ENUM_ENTRY(Sint32x3, WGPUVertexFormat_Sint32x3)
 	ENUM_ENTRY(Sint32x4, WGPUVertexFormat_Sint32x4)
-	ENUM_ENTRY(Unorm10_10_10_2, WGPUVertexFormat_Unorm10_10_10_2)
+	ENUM_ENTRY(_2, WGPUVertexFormat_Unorm10_10_10_2)
 	ENUM_ENTRY(Unorm8x4BGRA, WGPUVertexFormat_Unorm8x4BGRA)
 	ENUM_ENTRY(Force32, WGPUVertexFormat_Force32)
 END
@@ -728,7 +727,7 @@ ENUM(NativeSType)
 	ENUM_ENTRY(DeviceExtras, WGPUSType_DeviceExtras)
 	ENUM_ENTRY(NativeLimits, WGPUSType_NativeLimits)
 	ENUM_ENTRY(PipelineLayoutExtras, WGPUSType_PipelineLayoutExtras)
-	ENUM_ENTRY(ShaderModuleGLSLDescriptor, WGPUSType_ShaderModuleGLSLDescriptor)
+	ENUM_ENTRY(ShaderSourceGLSL, WGPUSType_ShaderSourceGLSL)
 	ENUM_ENTRY(InstanceExtras, WGPUSType_InstanceExtras)
 	ENUM_ENTRY(BindGroupEntryExtras, WGPUSType_BindGroupEntryExtras)
 	ENUM_ENTRY(BindGroupLayoutEntryExtras, WGPUSType_BindGroupLayoutEntryExtras)
@@ -809,6 +808,22 @@ END
 ENUM(NativeQueryType)
 	ENUM_ENTRY(PipelineStatistics, WGPUNativeQueryType_PipelineStatistics)
 	ENUM_ENTRY(Force32, WGPUNativeQueryType_Force32)
+END
+ENUM(DxcMaxShaderModel)
+	ENUM_ENTRY(_0, WGPUDxcMaxShaderModel_V6_0)
+	ENUM_ENTRY(_1, WGPUDxcMaxShaderModel_V6_1)
+	ENUM_ENTRY(_2, WGPUDxcMaxShaderModel_V6_2)
+	ENUM_ENTRY(_3, WGPUDxcMaxShaderModel_V6_3)
+	ENUM_ENTRY(_4, WGPUDxcMaxShaderModel_V6_4)
+	ENUM_ENTRY(_5, WGPUDxcMaxShaderModel_V6_5)
+	ENUM_ENTRY(_6, WGPUDxcMaxShaderModel_V6_6)
+	ENUM_ENTRY(_7, WGPUDxcMaxShaderModel_V6_7)
+	ENUM_ENTRY(Force32, WGPUDxcMaxShaderModel_Force32)
+END
+ENUM(GLFenceBehaviour)
+	ENUM_ENTRY(Normal, WGPUGLFenceBehaviour_Normal)
+	ENUM_ENTRY(AutoFinish, WGPUGLFenceBehaviour_AutoFinish)
+	ENUM_ENTRY(Force32, WGPUGLFenceBehaviour_Force32)
 END
 ENUM(NativeTextureFormat)
 	ENUM_ENTRY(R16Unorm, WGPUNativeTextureFormat_R16Unorm)
@@ -975,7 +990,7 @@ STRUCT(ShaderDefine)
 	void setDefault();
 END
 
-STRUCT(ShaderModuleGLSLDescriptor)
+STRUCT(ShaderSourceGLSL)
 	void setDefault();
 END
 
@@ -1397,7 +1412,7 @@ HANDLE(Device)
 	void setLabel(StringView label) const;
 	void addRef() const;
 	void release() const;
-	Bool poll(Bool wait, SubmissionIndex const * wrappedSubmissionIndex) const;
+	Bool poll(Bool wait, SubmissionIndex const * submissionIndex) const;
 	ShaderModule createShaderModuleSpirV(const ShaderModuleDescriptorSpirV& descriptor) const;
 END
 
@@ -2261,11 +2276,11 @@ void ShaderDefine::setDefault() {
 }
 
 
-// Methods of ShaderModuleGLSLDescriptor
-void ShaderModuleGLSLDescriptor::setDefault() {
+// Methods of ShaderSourceGLSL
+void ShaderSourceGLSL::setDefault() {
 	((ChainedStruct*)&chain)->setDefault();
 	((StringView*)&code)->setDefault();
-	chain.sType = (WGPUSType)NativeSType::ShaderModuleGLSLDescriptor;
+	chain.sType = (WGPUSType)NativeSType::ShaderSourceGLSL;
 	chain.next = nullptr;
 }
 
@@ -2651,8 +2666,8 @@ void Device::addRef() const {
 void Device::release() const {
 	return wgpuDeviceRelease(m_raw);
 }
-Bool Device::poll(Bool wait, SubmissionIndex const * wrappedSubmissionIndex) const {
-	return wgpuDevicePoll(m_raw, wait, wrappedSubmissionIndex);
+Bool Device::poll(Bool wait, SubmissionIndex const * submissionIndex) const {
+	return wgpuDevicePoll(m_raw, wait, submissionIndex);
 }
 ShaderModule Device::createShaderModuleSpirV(const ShaderModuleDescriptorSpirV& descriptor) const {
 	return wgpuDeviceCreateShaderModuleSpirV(m_raw, &descriptor);

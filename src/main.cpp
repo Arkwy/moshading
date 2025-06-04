@@ -17,22 +17,31 @@
     #include <GLFW/glfw3native.h>
 #endif
 
-
-#include "app.hpp"
+#include "renderer.hpp"
+#include "gpu_context.hpp"
 
 int main() {
-    App app;
-    if (!app.initialize()) {
+    GPUContext ctx;
+    if (!ctx.init()) {
+        return 1;
+    }
+
+    Renderer renderer(ctx);
+
+    if (!renderer.init()) {
         return 1;
     }
     
 #ifdef __EMSCRIPTEN__
-    emscripten_set_main_loop_arg([](void* app)->void{static_cast<App*>(app)->main_loop();}, &app, 0, true);
+    emscripten_set_main_loop_arg([](void* renderer)->void{static_cast<Renderer*>(renderer)->main_loop();}, &renderer, 0, true);
 #else
-    while (app.is_running()) app.main_loop();
+    while (renderer.is_running()) renderer.main_loop();
+    ctx.get_device().poll(true, nullptr); // make sure every command terminates before quitting
 #endif
 
-    app.terminate();
+
+    renderer.terminate();
+
 
     return 0;
 }

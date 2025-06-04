@@ -149,7 +149,7 @@
                   let
                     clangMajorVersion = builtins.head (builtins.match "([0-9]+).*" pkgs.libclang.version);
                   in
-                  (builtins.map (a: ''-I"${a}/include"'') [
+                  (builtins.map (a: ''-I${a}/include'') [
                     # add dev libraries here (e.g. pkgs.libvmi.dev)
                     pkgs.glibc_multi.dev
                   ])
@@ -161,6 +161,10 @@
                     # ''-I${pkgs.wgpu-native.dev}/include/webgpu''
                     "-I${toString ./subprojects/wgpu-native}/ffi"
                   ];
+
+                postShellHook = ''
+                    cargo install naga-cli
+                '';
               };
         }
       );

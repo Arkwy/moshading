@@ -1,5 +1,4 @@
-#ifndef IMAGE_H
-#define IMAGE_H
+#pragma once 
 
 #include <string>
 #include <imgui.h>
@@ -11,12 +10,5 @@ struct Img {
     vec2 pos;
     vec2 size;
     std::string name;
-
-private:
     const std::string path;
 };
-
-
-
-
-#endif

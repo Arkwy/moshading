@@ -41,7 +41,7 @@ struct WidgetGroup {
 
 template <typename T>
 concept WidgetGroupType =
-    requires { []<Widget... Ws>(WidgetGroup<Ws...>*) {}(std::declval<T*>()); } || std::is_same_v<T, void>;
+    requires { []<Widget... Ws>(WidgetGroup<Ws...>) {}(std::declval<T>()); } || std::is_same_v<T, void>;
 
 
 

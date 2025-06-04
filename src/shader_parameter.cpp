@@ -14,9 +14,7 @@ void Float<WidgetKind::Slider>::display() {
 
 template <>
 void Float<WidgetKind::Field>::display() {
-    if (ImGui::InputFloat(name.c_str(), &state)) {
-        state = std::clamp(state, min, max);
-    };
+    ImGui::DragFloat(name.c_str(), &state, (max - min) / 100., min, max);
 }
 
 template <>
@@ -26,9 +24,7 @@ void Integer<WidgetKind::Slider>::display() {
 
 template <>
 void Integer<WidgetKind::Field>::display() {
-    if (ImGui::InputInt(name.c_str(), &state)) {
-        state = std::clamp(state, min, max);
-    };
+    ImGui::DragInt(name.c_str(), &state, (max - min) / 100., min, max);
 }
 
 

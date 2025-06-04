@@ -1,12 +1,16 @@
+#include <imgui.h>
+#include <imgui_internal.h>
 #include <backends/imgui_impl_wgpu.h>
 #include <backends/imgui_impl_glfw.h>
 #include <webgpu/webgpu-raii.hpp>
+#include "src/log.hpp"
+#include "webgpu/webgpu.hpp"
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WAYLAND
 #define GLFW_NATIVE_INCLUDE_NONE
 #include <GLFW/glfw3native.h>
 
-#include "app.hpp"
+#include "renderer.hpp"
 
 
 void glfw_error_callback(int error, const char* description) {
@@ -15,7 +19,7 @@ void glfw_error_callback(int error, const char* description) {
 
 
 void resize_callback(GLFWwindow* window, int new_width, int new_height) {
-    App app = *static_cast<App*>(glfwGetWindowUserPointer(window));
+    Renderer app = *static_cast<Renderer*>(glfwGetWindowUserPointer(window));
 
     app.surface_config.width = new_width;
     app.surface_config.height = new_height;
@@ -24,7 +28,7 @@ void resize_callback(GLFWwindow* window, int new_width, int new_height) {
 }
 
 
-bool App::initialize() {
+bool Renderer::init() {
 
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) return false;
@@ -40,6 +44,7 @@ bool App::initialize() {
         nullptr,
         nullptr
     );
+
     if (this->window == nullptr) {
         glfwTerminate();
         return false;
@@ -47,16 +52,6 @@ bool App::initialize() {
 
     glfwSetWindowUserPointer(this->window, this);
 
-    this->instance = wgpu::createInstance();
-
-    wgpu::raii::Adapter adapter = this->instance->requestAdapter(wgpu::RequestAdapterOptions{});
-    if (!adapter) {
-        glfwDestroyWindow(this->window);
-        glfwTerminate();
-        return false;
-    }
-
-    this->device = adapter->requestDevice(wgpu::DeviceDescriptor{});
     struct wl_display* wayland_display = glfwGetWaylandDisplay();
     struct wl_surface* wayland_surface = glfwGetWaylandWindow(this->window);
 
@@ -68,9 +63,9 @@ bool App::initialize() {
 
     wgpu::SurfaceDescriptor surfaceDescriptor;
     surfaceDescriptor.nextInChain = &fromWaylandSurface.chain;
-    surfaceDescriptor.label = (WGPUStringView){NULL, WGPU_STRLEN};
+    surfaceDescriptor.label = WGPUStringView{nullptr, WGPU_STRLEN};
 
-    this->surface = this->instance->createSurface(surfaceDescriptor);
+    this->surface = ctx.get_instance().createSurface(surfaceDescriptor);
     if (!*this->surface) {
         glfwDestroyWindow(this->window);
         glfwTerminate();
@@ -78,7 +73,7 @@ bool App::initialize() {
     }
 
     wgpu::SurfaceCapabilities sc;
-    this->surface->getCapabilities(*adapter, &sc);
+    this->surface->getCapabilities(ctx.get_adapter(), &sc);
 
     bool format_found = false;
     for (size_t i = 0; i < sc.formatCount; i++) {
@@ -96,7 +91,7 @@ bool App::initialize() {
     glfwGetFramebufferSize(this->window, &width, &height);
 
     this->surface_config.nextInChain = nullptr;
-    this->surface_config.device = *this->device;
+    this->surface_config.device = ctx.get_device();
     this->surface_config.format = WGPUTextureFormat_RGBA8Unorm;
     this->surface_config.usage = WGPUTextureUsage_RenderAttachment;
     this->surface_config.presentMode = WGPUPresentMode_Fifo;
@@ -119,6 +114,7 @@ bool App::initialize() {
     (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;   // Enable Gamepad Controls
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -128,8 +124,8 @@ bool App::initialize() {
     ImGui_ImplGlfw_InitForOther(this->window, true);
 
     ImGui_ImplWGPU_InitInfo init_info;
-    init_info.Device = *this->device;
-    init_info.NumFramesInFlight = 3;
+    init_info.Device = ctx.get_device();
+    init_info.NumFramesInFlight = 100;
     init_info.RenderTargetFormat = this->preferred_fmt;
     init_info.DepthStencilFormat = WGPUTextureFormat_Undefined;
     ImGui_ImplWGPU_Init(&init_info);
@@ -138,20 +134,7 @@ bool App::initialize() {
 }
 
 
-void App::terminate() {
-    
-    ImGui_ImplWGPU_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-
-    this->surface->release();  // released manually as it must
-
-    glfwDestroyWindow(this->window);
-    glfwTerminate();
-}
-
-
-void App::main_loop() {
+void Renderer::main_loop() {
 
     glfwPollEvents();
     if (glfwGetWindowAttrib(this->window, GLFW_ICONIFIED) != 0) {
@@ -165,30 +148,30 @@ void App::main_loop() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    display_app();
 
     // Rendering
     ImGui::Render();
 
 #ifdef IMGUI_IMPL_WEBGPU_BACKEND_DAWN
-    // Tick needs to be called in Dawn to display validation errors
     device->tick();
 #elifdef IMGUI_IMPL_WEBGPU_BACKEND_WGPU
-    this->device->poll(false, nullptr);
+    ctx.get_device().poll(false, nullptr);
 #endif
 
 
     wgpu::SurfaceTexture surface_texture;
     this->surface->getCurrentTexture(&surface_texture);
 
-    wgpu::raii::TextureView textureView;
-    *textureView = wgpuTextureCreateView(surface_texture.texture, NULL);
+    wgpu::raii::TextureView texture_view;
+    *texture_view = wgpuTextureCreateView(surface_texture.texture, NULL);
 
     wgpu::RenderPassColorAttachment color_attachments = {};
     color_attachments.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
-    color_attachments.loadOp = WGPULoadOp_Clear;
-    color_attachments.storeOp = WGPUStoreOp_Store;
+    color_attachments.loadOp = wgpu::LoadOp::Clear;
+    color_attachments.storeOp = wgpu::StoreOp::Store;
     color_attachments.clearValue = {0, 100, 200};
-    color_attachments.view = *textureView;
+    color_attachments.view = *texture_view;
 
     wgpu::RenderPassDescriptor render_pass_desc = {};
     render_pass_desc.colorAttachmentCount = 1;
@@ -196,21 +179,18 @@ void App::main_loop() {
     render_pass_desc.depthStencilAttachment = nullptr;
 
     wgpu::CommandEncoderDescriptor enc_desc = {};
-    wgpu::raii::CommandEncoder encoder = this->device->createCommandEncoder(enc_desc);
+    wgpu::raii::CommandEncoder encoder = ctx.get_device().createCommandEncoder(enc_desc);
 
     wgpu::raii::RenderPassEncoder pass = encoder->beginRenderPass(render_pass_desc);
+
     ImGui_ImplWGPU_RenderDrawData(ImGui::GetDrawData(), *pass);
-    wgpuRenderPassEncoderEnd(*pass);
+    pass->end();
 
     wgpu::CommandBufferDescriptor cmd_buffer_desc = {};
     wgpu::raii::CommandBuffer cmd_buffer = encoder->finish(cmd_buffer_desc);
-    wgpu::raii::Queue queue = this->device->getQueue();
+    wgpu::raii::Queue queue = ctx.get_device().getQueue();
     queue->submit(1, &(*cmd_buffer));
 
+
     this->surface->present();
-}
-
-
-bool App::is_running() {
-    return !glfwWindowShouldClose(this->window);
 }

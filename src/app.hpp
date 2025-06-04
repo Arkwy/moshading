@@ -1,27 +1,41 @@
 #pragma once
 
-#include <GLFW/glfw3.h>
-#include <webgpu/webgpu-raii.hpp>
+// #include <memory>
+// #include <vector>
+
+// #include "image.hpp"
+// #include "shader.hpp"
+
+#include <webgpu/webgpu.h>
+#include "gpu_context.hpp"
+#include "webgpu/webgpu-raii.hpp"
 
 struct App {
-    GLFWwindow *window;
-    wgpu::raii::Instance instance;
-    wgpu::raii::Device device;
-    wgpu::raii::Queue queue;
-    wgpu::raii::Surface surface;
+    const GPUContext& ctx;
+    unsigned int shader_render_width = 1920;
+    unsigned int shader_render_height = 1080;
+    float time = 0;
 
-    wgpu::TextureFormat preferred_fmt = WGPUTextureFormat_RGBA8Unorm;
-    wgpu::SurfaceConfiguration surface_config;
+    
+    // std::vector<std::unique_ptr<Img>> images;
+    // std::vector<std::unique_ptr<Shader>> shaders;
 
-    // Initialize everything and return true if it went all right
-    bool initialize();
+    App(const GPUContext& ctx) : ctx(ctx) {
+    };
 
-    // Uninitialize everything that was initialized
-    void terminate();
+    void display();
 
-    // Draw a frame and handle events
-    void main_loop();
 
-    // Return true as long as the main loop should keep on running
-    bool is_running();
+  private:
+    wgpu::raii::Texture tex;
+    wgpu::raii::TextureView tex_view;
+    wgpu::raii::ShaderModule shader_module;
+    wgpu::raii::RenderPipeline render_pipeline; 
+    // wgpu::raii::Sampler rescale_sampler;
+    // wgpu::raii::BindGroupLayout rescale_bind_group_layout;
+    // wgpu::raii::BindGroup rescale_bind_group;
+
+    bool initiliazed = false;
+    bool render_shader();
 };
+

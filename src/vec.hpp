@@ -1,5 +1,4 @@
-#ifndef VECTOR_H
-#define VECTOR_H
+#pragma once
 
 #include <cstddef>
 #include <type_traits>
@@ -72,5 +71,3 @@ using ivec4 = Vector<int, 4>;
 using uvec2 = Vector<unsigned int, 2>;
 using uvec3 = Vector<unsigned int, 3>;
 using uvec4 = Vector<unsigned int, 4>;
-
-#endif
