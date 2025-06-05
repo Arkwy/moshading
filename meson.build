@@ -28,10 +28,12 @@ imgui_files = [
 # Source files
 moshading_files = [
   'src/main.cpp',
-  'src/shader_parameter.cpp',
   'src/gpu_context.cpp',
   'src/renderer.cpp',
   'src/app.cpp',
+  'src/shader/shader.cpp',
+  'src/shader/manager.cpp',
+  'src/shader/parameter.cpp',
   embed_shaders[0],
 ]
 

@@ -19,7 +19,7 @@ void glfw_error_callback(int error, const char* description) {
 
 
 void resize_callback(GLFWwindow* window, int new_width, int new_height) {
-    Renderer app = *static_cast<Renderer*>(glfwGetWindowUserPointer(window));
+    Renderer& app = *static_cast<Renderer*>(glfwGetWindowUserPointer(window));
 
     app.surface_config.width = new_width;
     app.surface_config.height = new_height;

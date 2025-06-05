@@ -2,7 +2,7 @@
 
 #include <imgui.h>
 
-#include "shader_parameter.hpp"
+#include "parameter.hpp"
 
 using namespace UserParam;
 
