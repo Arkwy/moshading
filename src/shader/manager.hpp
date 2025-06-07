@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <memory>
 #include <vector>
+#include <chrono>
 
 #include "src/gpu_context.hpp"
 #include "src/shader/shader.hpp"
@@ -11,7 +12,7 @@
 struct ShaderManager;
 
 struct InnerShader {
-    std::unique_ptr<Shader> shader;  // futur proof for when `Shader` will be derivable
+    std::unique_ptr<Shader> shader;  // futur proof for when `Shader` will be derived
     wgpu::raii::ShaderModule vertex_module;
     wgpu::raii::ShaderModule frag_module;
     wgpu::raii::RenderPipeline render_pipeline;
@@ -59,7 +60,7 @@ struct ShaderManager {
     ShaderManager(const ShaderManager&) = delete;
     ShaderManager(ShaderManager&&) = delete;
 
-    void display() const;
+    void display();
     void render() const;
     void add_shader(
         const std::string& name, const char* const vertex_code, const char* const frag_code
@@ -69,8 +70,16 @@ struct ShaderManager {
 
   private:
     friend struct InnerShader;
+
+    struct alignas(16) DefaultUniforms {
+        uint32_t viewport_width;
+        uint32_t viewport_height;
+        float time;
+    };
+
     wgpu::raii::BindGroupLayout bind_group_layout;
     wgpu::raii::Sampler sampler;
+    wgpu::raii::Buffer default_uniforms;
 
     wgpu::raii::Texture texture_A;
     wgpu::raii::TextureView texture_view_A;
@@ -84,6 +93,8 @@ struct ShaderManager {
 
     unsigned int width;
     unsigned int height;
+    std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
+
 
     void init();
 

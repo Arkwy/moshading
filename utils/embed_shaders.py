@@ -15,6 +15,12 @@ with open(output_h, 'w') as h:
             if input_file.suffix != '.wgsl': continue
 
             var_name = '_'.join(input_file.name.split('.')[:-1])
+            try:
+                int(var_name[0])
+                print("shader name cannot start with a number")
+                continue
+            except:
+                pass
             h.write(f'\nextern const char {var_name}[];\n')
             with open(input_file, 'r') as f:
                 cpp.write(f'\nconst char {var_name}[] = R"__shader__({f.read()})__shader__";\n')

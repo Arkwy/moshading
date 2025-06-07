@@ -1,6 +1,8 @@
+#include "shader.hpp"
+
 #include <imgui.h>
 
-#include "shader.hpp"
+#include <memory>
 
 
 Shader::Shader(const std::string& name, const char* const vertex_code, const char* const frag_code)
@@ -8,6 +10,6 @@ Shader::Shader(const std::string& name, const char* const vertex_code, const cha
 
 
 void Shader::display() {
-    ImGui::BeginChild(name.c_str());
-    ImGui::EndChild();
+    float v = 10;
+    ImGui::SliderFloat("tt", &v, 0, 20);
 }

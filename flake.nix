@@ -106,6 +106,9 @@
                   vulkan-loader
                   vulkan-tools
                   vulkan-headers
+
+                  # wgsl
+                  wgsl-analyzer
                 ];
 
                 LIBCLANG_PATH = pkgs.lib.makeLibraryPath [ pkgs.llvmPackages_latest.libclang.lib ];

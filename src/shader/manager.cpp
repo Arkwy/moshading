@@ -3,10 +3,14 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <chrono>
+#include <format>
 #include <memory>
+#include <webgpu/webgpu.hpp>
 
+#include "imgui_internal.h"
 #include "shader.hpp"
-#include "webgpu/webgpu.hpp"
+#include "src/log.hpp"
 
 
 InnerShader::InnerShader(  // debug constructor, to be removed
@@ -96,7 +100,7 @@ void InnerShader::init_pipeline(const ShaderManager& manager) {
     frag_state.targets = &color_target;
 
     // // render pipeline setup
-    WGPUBindGroupLayout bgls[1] = { *manager.bind_group_layout };
+    WGPUBindGroupLayout bgls[1] = {*manager.bind_group_layout};
     wgpu::PipelineLayoutDescriptor pipeline_layout_desc;
     pipeline_layout_desc.bindGroupLayoutCount = 1;
     pipeline_layout_desc.bindGroupLayouts = bgls;
@@ -129,6 +133,7 @@ ShaderManager::ShaderManager(const GPUContext& ctx, unsigned int width, unsigned
 
 void ShaderManager::init() {
     assert(!*texture_A && !*texture_view_A && !*texture_B && !*texture_view_B);
+    start_time = std::chrono::high_resolution_clock::now();
 
     // Textures
     wgpu::TextureDescriptor texture_desc;
@@ -156,13 +161,22 @@ void ShaderManager::init() {
     wgpu::SamplerDescriptor sampler_desc;
     sampler_desc.minFilter = wgpu::FilterMode::Linear;
     sampler_desc.magFilter = wgpu::FilterMode::Linear;
-    sampler_desc.mipmapFilter = wgpu::MipmapFilterMode::Nearest; // Optional, no mipmaps used
+    sampler_desc.mipmapFilter = wgpu::MipmapFilterMode::Nearest;  // Optional, no mipmaps used
     sampler_desc.maxAnisotropy = 1;
 
     sampler = ctx.get_device().createSampler(sampler_desc);
 
+    // Default uniforms
+    wgpu::BufferDescriptor du_buffer_desc;
+    du_buffer_desc.usage = wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
+    du_buffer_desc.size = sizeof(DefaultUniforms);
+    du_buffer_desc.mappedAtCreation = false;
+
+    default_uniforms = ctx.get_device().createBuffer(du_buffer_desc);
+
+
     // Bind group layout
-    wgpu::BindGroupLayoutEntry bgl_entries[2];
+    wgpu::BindGroupLayoutEntry bgl_entries[3];
     // texture entry
     bgl_entries[0].binding = 0;
     bgl_entries[0].visibility = wgpu::ShaderStage::Fragment;
@@ -173,9 +187,15 @@ void ShaderManager::init() {
     bgl_entries[1].binding = 1;
     bgl_entries[1].visibility = wgpu::ShaderStage::Fragment;
     bgl_entries[1].sampler.type = wgpu::SamplerBindingType::Filtering;
+    // default uniforms entry
+    bgl_entries[2].binding = 2;
+    bgl_entries[2].visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
+    bgl_entries[2].buffer.type = wgpu::BufferBindingType::Uniform;
+    bgl_entries[2].buffer.hasDynamicOffset = false;
+    bgl_entries[2].buffer.minBindingSize = sizeof(DefaultUniforms);
 
     wgpu::BindGroupLayoutDescriptor bgl_desc;
-    bgl_desc.entryCount = 2;
+    bgl_desc.entryCount = 3;
     bgl_desc.entries = bgl_entries;
 
     bind_group_layout = ctx.get_device().createBindGroupLayout(bgl_desc);
@@ -194,18 +214,24 @@ void ShaderManager::init() {
     bg_sampler_entry.binding = 1;
     bg_sampler_entry.sampler = *sampler;
 
-    wgpu::BindGroupEntry bg_A_entries[2] = {bg_texture_A_entry, bg_sampler_entry};
-    wgpu::BindGroupEntry bg_B_entries[2] = {bg_texture_B_entry, bg_sampler_entry};
+    wgpu::BindGroupEntry bg_uniforms_entry;
+    bg_uniforms_entry.binding = 2;
+    bg_uniforms_entry.buffer = *default_uniforms;
+    bg_uniforms_entry.offset = 0;
+    bg_uniforms_entry.size = sizeof(DefaultUniforms);
+
+    wgpu::BindGroupEntry bg_A_entries[3] = {bg_texture_A_entry, bg_sampler_entry, bg_uniforms_entry};
+    wgpu::BindGroupEntry bg_B_entries[3] = {bg_texture_B_entry, bg_sampler_entry, bg_uniforms_entry};
 
     // descriptors
     wgpu::BindGroupDescriptor bg_A_desc;
     bg_A_desc.layout = *bind_group_layout;
-    bg_A_desc.entryCount = 2;
+    bg_A_desc.entryCount = 3;
     bg_A_desc.entries = bg_A_entries;
 
     wgpu::BindGroupDescriptor bg_B_desc;
     bg_B_desc.layout = *bind_group_layout;
-    bg_B_desc.entryCount = 2;
+    bg_B_desc.entryCount = 3;
     bg_B_desc.entries = bg_B_entries;
 
     // bind groups
@@ -215,13 +241,8 @@ void ShaderManager::init() {
 
 
 void ShaderManager::resize(unsigned int new_width, unsigned int new_height) {
-    assert(*texture_A && *texture_view_A);
-
     width = new_width;
     height = new_height;
-
-    texture_A->release();
-    texture_view_A->release();
 
     init();
 
@@ -257,21 +278,33 @@ void ShaderManager::render() const {
     assert(*texture_view_A && *texture_view_B);
     assert(shaders.size() > 0);
     wgpu::TextureView tv;
-    for (size_t i = 0; i < shaders.size(); i++) { // TODO chache color attachment(s?) and render pass descriptor(s?)
+    DefaultUniforms du = {
+        width,
+        height,
+        std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - start_time).count()
+    };
+
+    wgpu::raii::Queue queue = ctx.get_device().getQueue();
+
+    queue->writeBuffer(*default_uniforms, 0, &du, sizeof(du));
+
+    wgpu::RenderPassColorAttachment color_attachment;
+    color_attachment.loadOp = wgpu::LoadOp::Clear;
+    color_attachment.storeOp = wgpu::StoreOp::Store;
+    color_attachment.clearValue = {0.0f, 0.0f, 0.0f, 1.0f};
+    color_attachment.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
+
+    wgpu::RenderPassDescriptor render_pass_desc;
+    render_pass_desc.colorAttachmentCount = 1;
+    render_pass_desc.colorAttachments = &color_attachment;
+    render_pass_desc.depthStencilAttachment = nullptr;
+
+    for (size_t i = 0; i < shaders.size(); i++) {  // TODO chache color attachment(s?) and render pass descriptor(s?)
         tv = i % 2 ? *texture_view_A : *texture_view_B;
         wgpu::BindGroup bg = i % 2 ? *bind_group_B : *bind_group_A;
 
-        wgpu::RenderPassColorAttachment color_attachment;
         color_attachment.view = tv;
-        color_attachment.loadOp = wgpu::LoadOp::Clear;
-        color_attachment.storeOp = wgpu::StoreOp::Store;
-        color_attachment.clearValue = {0.0f, 0.0f, 0.0f, 1.0f};
-        color_attachment.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
 
-        wgpu::RenderPassDescriptor render_pass_desc;
-        render_pass_desc.colorAttachmentCount = 1;
-        render_pass_desc.colorAttachments = &color_attachment;
-        render_pass_desc.depthStencilAttachment = nullptr;
 
         wgpu::raii::CommandEncoder cmd_encoder = ctx.get_device().createCommandEncoder();
         wgpu::raii::RenderPassEncoder pass_encoder = cmd_encoder->beginRenderPass(render_pass_desc);
@@ -285,12 +318,77 @@ void ShaderManager::render() const {
 
         wgpu::raii::CommandBuffer cmd_buffer = cmd_encoder->finish();
 
-        wgpu::raii::Queue queue = ctx.get_device().getQueue();
         queue->submit(1, &(*cmd_buffer));
     }
-
     ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<WGPUTextureView>(tv)), ImVec2(width, height));
 }
 
 
-void ShaderManager::display() const { ImGui::Text("shader management"); }
+void ShaderManager::display() {
+    int to_remode_idx = -1; // store shader idx user decided to remove or -1 if no remove action
+    for (size_t i = 0; i < shaders.size(); i++) {
+        std::unique_ptr<Shader>& shader = shaders[i].shader;
+
+        ImGui::PushID(i);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0);
+
+        ImGuiChildFlags child_flags = ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY;
+        ImGui::BeginChild(shader->name.c_str(), ImVec2(-1, 0), child_flags, ImGuiWindowFlags_MenuBar);
+
+
+        // Menu bar
+        if (ImGui::BeginMenuBar()) {
+            ImGui::Text("%s", shader->name.c_str());
+
+            // Push all the way to the right
+            float icon_width = ImGui::CalcTextSize("--").x + ImGui::CalcTextSize("x").x;  // if using icon font
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+
+            ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 3 * icon_width);
+
+            
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));                  // Transparent when idle
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.5f, 0.5f, 0.5f, 0.5f));  // Gray when hovered
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.5f, 0.5f, 0.5f));   // Same as hovered (optional)
+
+            ImGui::Button("--");
+
+            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+                ImGui::SetDragDropPayload("DND_SHADER_CELL", &i, sizeof(size_t));
+                ImGui::Text("Move %s", shader->name.c_str());
+                ImGui::EndDragDropSource();
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Button("x")) {
+                to_remode_idx = i;
+            }
+
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar(1);
+
+            ImGui::EndMenuBar();
+        }
+
+        ImGui::EndChild();
+
+        ImGui::PopStyleVar(1);
+
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_SHADER_CELL")) {
+                IM_ASSERT(payload->DataSize == sizeof(size_t));
+                size_t payload_i = *(const size_t*)payload->Data;
+                reorder_element(payload_i, i);
+            }
+            ImGui::EndDragDropTarget();
+        }
+
+        ImGui::PopID();
+    }
+
+    if (to_remode_idx >= 0) {
+        shaders.erase(shaders.begin() + to_remode_idx);
+    }
+}

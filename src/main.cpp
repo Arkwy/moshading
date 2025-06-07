@@ -39,9 +39,9 @@ int main() {
     ctx.get_device().poll(true, nullptr); // make sure every command terminates before quitting
 #endif
 
-
     renderer.terminate();
 
+    ctx.get_device().poll(true, nullptr); // make sure every command terminates before quitting
 
     return 0;
 }
