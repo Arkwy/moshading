@@ -41,7 +41,9 @@ int main() {
 
     renderer.terminate();
 
+#ifndef __EMSCRIPTEN__
     ctx.get_device().poll(true, nullptr); // make sure every command terminates before quitting
+#endif
 
     return 0;
 }

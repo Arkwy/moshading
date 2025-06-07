@@ -33,8 +33,9 @@ InnerShader::InnerShader(const ShaderManager& manager, std::unique_ptr<Shader> s
 
 void InnerShader::init_module(const ShaderManager& manager) {
 #ifdef __EMSCRIPTEN__
-    wgpu::ShaderModuleWGSLDescriptor shader_source shader_source.code = shader->vertex_code;
-    shader_source.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
+    wgpu::ShaderModuleWGSLDescriptor vertex_source;
+    vertex_source.code = shader->vertex_code;
+    vertex_source.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
 #else
     wgpu::ShaderSourceWGSL vertex_source;
     vertex_source.code.data = shader->vertex_code;
@@ -50,8 +51,9 @@ void InnerShader::init_module(const ShaderManager& manager) {
 
 
 #ifdef __EMSCRIPTEN__
-    wgpu::ShaderModuleWGSLDescriptor shader_source shader_source.code = shader->frag_code;
-    shader_source.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
+    wgpu::ShaderModuleWGSLDescriptor frag_source;
+    frag_source.code = shader->frag_code;
+    frag_source.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
 #else
     wgpu::ShaderSourceWGSL frag_source;
     frag_source.code.data = shader->frag_code;
@@ -138,7 +140,7 @@ void ShaderManager::init() {
     // Textures
     wgpu::TextureDescriptor texture_desc;
 #ifdef __EMSCRIPTEN__
-    tex_desc.label = "shader_render";
+    texture_desc.label = "shader_render";
 #else
     texture_desc.label.data = "shader_render";
     texture_desc.label.length = WGPU_STRLEN;
