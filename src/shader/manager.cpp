@@ -6,6 +6,8 @@
 #include <webgpu/webgpu.hpp>
 
 #include "shader.hpp"
+#include "shaders/circle.hpp"
+#include "src/log.hpp"
 
 
 
@@ -13,6 +15,8 @@ ShaderManager::ShaderManager(const GPUContext& ctx, unsigned int width, unsigned
     : ctx(ctx), shaders(), width(width), height(height) {
     init();
 }
+
+ShaderManager::~ShaderManager() {}
 
 
 void ShaderManager::init() {
@@ -137,9 +141,13 @@ void ShaderManager::resize(unsigned int new_width, unsigned int new_height) {
 
 
 void ShaderManager::add_shader(ShaderVariant&& shader) {
-    std::visit([&](auto& s){s.init_module(ctx);}, shader);
+    Log::error("ok1");
+    std::visit([&](auto& s){s.init(ctx);}, shader);
+    Log::error("ok2");
     std::visit([&](auto& s){s.init_pipeline(ctx, *default_bind_group_layout);}, shader);
+    Log::error("ok3");
     shaders.push_back(std::move(shader));
+    Log::error("ok4");
 }
 
 
@@ -165,9 +173,9 @@ void ShaderManager::render() const {
     wgpu::raii::Queue queue = ctx.get_device().getQueue();
 
     queue->writeBuffer(*default_uniforms, 0, &du, sizeof(du));
-    // for (size_t i = 0; i < shaders.size(); i++) {
-    //     std::visit([&](auto s) { s.write_buffer(*queue); }, shaders[i].shader_desc);
-    // }
+    for (size_t i = 0; i < shaders.size(); i++) {
+        std::visit([&](auto& shader) { shader.write_buffers(*queue); }, shaders[i]);
+    }
 
     wgpu::RenderPassColorAttachment color_attachment;
     color_attachment.loadOp = wgpu::LoadOp::Clear;
@@ -193,6 +201,7 @@ void ShaderManager::render() const {
         pass_encoder->setViewport(0.0f, 0.0f, width, height, 0.0f, 1.0f);
         pass_encoder->setScissorRect(0, 0, width, height);
         pass_encoder->setBindGroup(0, default_bg, 0, nullptr);
+        std::visit([&](auto& s){s.set_bind_groups(*pass_encoder);}, shaders[i]);
         pass_encoder->setPipeline(std::visit([](auto& s){return s.get_render_pipeline();}, shaders[i]));
         pass_encoder->draw(3, 1, 0, 0);
         pass_encoder->end();
@@ -226,7 +235,7 @@ void ShaderManager::display() {
     // int to_remode_idx = -1; // store shader idx user decided to remove or -1 if no remove action
     for (size_t i = 0; i < shaders.size(); i++) {
         ShaderVariant& shader_desc = shaders[i];
-        const char* const shader_name = std::visit([](auto s) { return s.name.c_str(); }, shader_desc);
+        const char* const shader_name = std::visit([](auto& s) { return s.name.c_str(); }, shader_desc);
 
         ImGui::PushID(i);
 
@@ -271,8 +280,7 @@ void ShaderManager::display() {
             ImGui::EndMenuBar();
         }
 
-        std::visit([](auto s) { return s.display(); }, shader_desc);
-        ;
+        std::visit([](auto& s) { return s.display(); }, shader_desc);
 
         ImGui::EndChild();
 

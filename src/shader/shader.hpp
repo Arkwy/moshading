@@ -1,26 +1,20 @@
 #pragma once
 
-#include <optional>
+#include <imgui.h>
+
+#include <format>
 #include <string>
 #include <webgpu/webgpu-raii.hpp>
 
 #include "src/gpu_context.hpp"
-
-// #include "parameter.hpp"
+#include "src/log.hpp"
+#include "webgpu/webgpu.hpp"
 
 #define SHADER_VARIANTS X(NoParam), X(Circle)
 
 #define X(name) name
 enum class ShaderKind { SHADER_VARIANTS };
 #undef X
-
-// Shader::Shader(ShaderVariant&& shader) : shader_desc(std::move(shader)) {}
-
-
-// void Shader::init_module(const GPUContext& ctx)
-
-
-// void Shader::init_pipeline(const GPUContext& ctx, const wgpu::BindGroupLayout& default_bind_group_layout)
 
 
 template <typename Derived>
@@ -35,30 +29,22 @@ struct ShaderBase {
     const wgpu::ShaderModuleDescriptor vertex_module_desc;
     const wgpu::ShaderModuleDescriptor frag_module_desc;
 
-    const std::optional<wgpu::BindGroupLayoutDescriptor> bind_group_layout_desc;
+    void release() { static_cast<Derived*>(this)->release(); }
+
+    ShaderBase(ShaderBase& sb) = delete;
+    ShaderBase(ShaderBase&& sb) = default;
 
 
-    ShaderBase(const std::string& name, const char* const vertex_code, const char* const frag_code)
-        : name(name),
-          vertex_code(vertex_code),
-          frag_code(frag_code),
-          vertex_source(make_source(vertex_code)),
-          frag_source(make_source(frag_code)),
-          vertex_module_desc(make_module_desc(vertex_source)),
-          frag_module_desc(make_module_desc(frag_source)),
-          bind_group_layout_desc(make_bind_group_layout_desc()) {}
-
-    ~ShaderBase() = default;
 
     void display() { static_cast<Derived*>(this)->display(); }
 
-    void write_buffers(wgpu::Queue& queue) { static_cast<Derived*>(this)->write_buffers(queue); }
+    void write_buffers(wgpu::Queue& queue) const { static_cast<Derived*>(this)->write_buffers(queue); }
+
+    void init(const GPUContext& ctx) { static_cast<Derived*>(this)->init(); }
 
     void init_module(const GPUContext& ctx) {
-        vertex_module =
-            ctx.get_device().createShaderModule(vertex_module_desc);
-        frag_module =
-            ctx.get_device().createShaderModule(frag_module_desc);
+        vertex_module = ctx.get_device().createShaderModule(vertex_module_desc);
+        frag_module = ctx.get_device().createShaderModule(frag_module_desc);
     }
 
     void init_pipeline(const GPUContext& ctx, const wgpu::BindGroupLayout& default_bind_group_layout) {
@@ -94,25 +80,7 @@ struct ShaderBase {
         frag_state.targets = &color_target;
 
         // // render pipeline setup
-        wgpu::raii::PipelineLayout pipeline_layout;
-        if (bind_group_layout_desc.has_value()) {
-            shader_specific_bind_group_layout =
-                ctx.get_device().createBindGroupLayout(bind_group_layout_desc.value());
-
-            WGPUBindGroupLayout bgls[2] = {default_bind_group_layout, *shader_specific_bind_group_layout.value()};
-
-            wgpu::PipelineLayoutDescriptor pipeline_layout_desc;
-            pipeline_layout_desc.bindGroupLayoutCount = 2;
-            pipeline_layout_desc.bindGroupLayouts = bgls;
-            pipeline_layout = ctx.get_device().createPipelineLayout(pipeline_layout_desc);
-        } else {
-            WGPUBindGroupLayout bgls[1] = {default_bind_group_layout};
-
-            wgpu::PipelineLayoutDescriptor pipeline_layout_desc;
-            pipeline_layout_desc.bindGroupLayoutCount = 1;
-            pipeline_layout_desc.bindGroupLayouts = bgls;
-            pipeline_layout = ctx.get_device().createPipelineLayout(pipeline_layout_desc);
-        }
+        wgpu::raii::PipelineLayout pipeline_layout = make_pipeline_layout(ctx, default_bind_group_layout);
 
         wgpu::RenderPipelineDescriptor pipeline_desc;
         pipeline_desc.layout = *pipeline_layout;
@@ -130,15 +98,20 @@ struct ShaderBase {
         render_pipeline = ctx.get_device().createRenderPipeline(pipeline_desc);
     }
 
-    const wgpu::RenderPipeline get_render_pipeline() const {
-        return *render_pipeline;
-    }
+    const wgpu::RenderPipeline get_render_pipeline() const { return *render_pipeline; }
 
-  private:
+  protected:
+    ShaderBase(const std::string& name, const char* const vertex_code, const char* const frag_code)
+        : name(name),
+          vertex_code(vertex_code),
+          frag_code(frag_code),
+          vertex_source(make_source(vertex_code)),
+          frag_source(make_source(frag_code)),
+          vertex_module_desc(make_module_desc(vertex_source)),
+          frag_module_desc(make_module_desc(frag_source)) {}
+
     wgpu::raii::ShaderModule vertex_module;
     wgpu::raii::ShaderModule frag_module;
-    std::optional<wgpu::raii::BindGroupLayout> shader_specific_bind_group_layout = std::nullopt;
-    std::optional<wgpu::raii::BindGroup> shader_specific_bind_group = std::nullopt;
     wgpu::raii::RenderPipeline render_pipeline;
 
     static const wgpu::ShaderSourceWGSL make_source(const char* const code) {
@@ -162,77 +135,72 @@ struct ShaderBase {
         return module_desc;
     }
 
-
-    static const std::optional<wgpu::BindGroupLayoutDescriptor> make_bind_group_layout_desc() {
-        return Derived::make_bind_group_layout_desc();
+    wgpu::raii::PipelineLayout make_pipeline_layout(
+        const GPUContext& ctx, const wgpu::BindGroupLayout& default_bind_group_layout
+    ) {
+        return static_cast<Derived*>(this)->make_pipeline_layout(ctx, default_bind_group_layout);
     }
 };
 
 
 template <ShaderKind K>
 struct Shader : public ShaderBase<Shader<K>> {
-
     Shader(const std::string& name, const char* const vertex_code, const char* const frag_code)
         : ShaderBase<Shader<K>>(name, vertex_code, frag_code) {}
 
     // functions to template specialize
+    void init(const GPUContext& ctx);
     void display();
-    void write_buffers(wgpu::Queue& queue);
-    static const std::optional<wgpu::BindGroupLayoutDescriptor> make_bind_group_layout_desc();
-    const std::optional<wgpu::BindGroupDescriptor> make_bind_group_desc() const;
+    void write_buffers(wgpu::Queue& queue) const;
+    wgpu::raii::PipelineLayout make_pipeline_layout(
+        const GPUContext& ctx, const wgpu::BindGroupLayout& default_bind_group_layout
+    );
+    void set_bind_groups(wgpu::RenderPassEncoder& pass_encoder) const;
+
+    void release();
 };
 
 
 template <ShaderKind K>
+void Shader<K>::init(const GPUContext& ctx) {
+    this->init_module(ctx);
+}
+
+template <ShaderKind K>
+void Shader<K>::release() {
+    this->vertex_module->release();
+    this->frag_module->release();
+    this->render_pipeline->release();
+}
+
+template <ShaderKind K>
 void Shader<K>::display() {}
 
+template <ShaderKind K>
+void Shader<K>::write_buffers(wgpu::Queue& queue) const {}
 
 template <ShaderKind K>
-void Shader<K>::write_buffers(wgpu::Queue& queue) {}
+wgpu::raii::PipelineLayout Shader<K>::make_pipeline_layout(
+    const GPUContext& ctx, const wgpu::BindGroupLayout& default_bind_group_layout
+) {
+    wgpu::raii::PipelineLayout pipeline_layout;
 
+    WGPUBindGroupLayout bgls[1] = {default_bind_group_layout};
 
-template <ShaderKind K>
-const std::optional<wgpu::BindGroupLayoutDescriptor> Shader<K>::make_bind_group_layout_desc() {
-    return std::nullopt;
+    wgpu::PipelineLayoutDescriptor pipeline_layout_desc;
+    pipeline_layout_desc.bindGroupLayoutCount = 1;
+    pipeline_layout_desc.bindGroupLayouts = bgls;
+
+    pipeline_layout = ctx.get_device().createPipelineLayout(pipeline_layout_desc);
+
+    return pipeline_layout;
 }
+
+
+template <ShaderKind K>
+void Shader<K>::set_bind_groups(wgpu::RenderPassEncoder& pass_encoder) const {}
 
 
 #define X(name) Shader<ShaderKind::name>
 using ShaderVariant = std::variant<SHADER_VARIANTS>;
 #undef X
-
-
-// struct Shader {
-
-//     wgpu::raii::ShaderModule vertex_module;
-//     wgpu::raii::ShaderModule frag_module;
-//     std::optional<wgpu::raii::BindGroupLayout> shader_specific_bind_group_layout = std::nullopt;
-//     std::optional<wgpu::raii::BindGroup> shader_specific_bind_group = std::nullopt;
-//     wgpu::raii::RenderPipeline render_pipeline;
-
-//     Shader(Shader&& other) noexcept
-//         : shader_desc(std::move(other.shader_desc)),
-//           vertex_module(std::move(other.vertex_module)),
-//           frag_module(std::move(other.frag_module)),
-//           render_pipeline(std::move(other.render_pipeline)) {}
-
-//     // Shader& operator=(Shader&& other) noexcept {
-//     //     if (this != &other) {
-//     //         shader_desc = std::move(other.shader_desc);
-//     //         vertex_module = std::move(other.vertex_module);
-//     //         frag_module = std::move(other.frag_module);
-//     //         render_pipeline = std::move(other.render_pipeline);
-//     //     }
-//     //     return *this;
-//     // }
-
-//     // Deleted copy constructor and copy assignment operator
-//     Shader(const Shader&) = delete;
-//     Shader& operator=(const Shader&) = delete;
-
-//     Shader(ShaderVariant&& shader);
-
-//     void init_module(const GPUContext& ctx);
-//     void init_pipeline(const GPUContext& ctx, const wgpu::BindGroupLayout& default_bind_group_layout);
-//     // void init_bind_group(const ShaderManager& manager);
-// };

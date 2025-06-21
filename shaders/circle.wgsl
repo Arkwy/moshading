@@ -13,8 +13,8 @@ struct CircleUniforms {
     border_width : f32,
 };
 
-// @group(1) @binding(0) var<uniform> circle_uniforms: CircleUniforms;
-const circle_uniforms = CircleUniforms( vec2<f32>(0, 0), 0.5, 0.05 );
+@group(1) @binding(0) var<uniform> circle_uniforms: CircleUniforms;
+// const circle_uniforms = CircleUniforms( vec2<f32>(0, 0), 0.5, 0.05 );
 
 fn fullscreen_uv(coord : vec2<f32>) -> vec2<f32> {
     return coord / vec2<f32>(default_uniforms.viewport_size);

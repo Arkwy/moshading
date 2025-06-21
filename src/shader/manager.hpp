@@ -17,11 +17,10 @@ struct ShaderManager {
     ShaderManager(const ShaderManager&) = delete;
     ShaderManager(ShaderManager&&) = delete;
 
+    ~ShaderManager();
+
     void display();
     void render() const;
-    // void add_shader(
-    //     const std::string& name, const char* const vertex_code, const char* const frag_code
-    // );  // TODO refacto to limit module recompilation + move to private when ui is here
     void add_shader(ShaderVariant&& shader);  // TODO move to private when ui is here
     // void reorder_element(size_t index, size_t new_index);  // TODO move to private when ui is here
 
