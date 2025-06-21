@@ -3,7 +3,7 @@
 #include <string>
 #include <imgui.h>
 
-#include "vec.hpp"
+#include "src/vec.hpp"
 
 
 struct Img {

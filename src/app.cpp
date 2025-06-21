@@ -9,6 +9,7 @@
 
 #include "app.hpp"
 #include "shaders_code.hpp"
+#include "src/shader/shader.hpp"
 
 ImVec2 side_base_size(const ImVec2& window_size) { return ImVec2(window_size.x / 4., window_size.y); };
 
@@ -17,11 +18,13 @@ ImVec2 center_base_size(const ImVec2& window_size) { return ImVec2(window_size.x
 
 
 App::App(const GPUContext& ctx) : ctx(ctx), shader_manager(ctx, shader_render_width, shader_render_height) {
-    shader_manager.add_shader("s1", fullscreen_vertex, s1);
-    shader_manager.add_shader("s2", fullscreen_vertex, s2);
-    shader_manager.add_shader("s3", fullscreen_vertex, s3);
+    // shader_manager.add_shader("s1", fullscreen_vertex, s1);
+    shader_manager.add_shader(Shader<ShaderKind::NoParam>("s1", fullscreen_vertex, s1));
+    // shader_manager.add_shader("s2", fullscreen_vertex, s2);
+    // shader_manager.add_shader("s3", fullscreen_vertex, s3);
 
-    shader_manager.reorder_element(1, 2);
+    // shader_manager.reorder_element(1, 2);
+    // shader_manager.add_shader(std::make_unique<CircleShader>());
 };
 
 

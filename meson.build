@@ -31,9 +31,9 @@ moshading_files = [
   'src/gpu_context.cpp',
   'src/renderer.cpp',
   'src/app.cpp',
-  'src/shader/shader.cpp',
   'src/shader/manager.cpp',
   'src/shader/parameter.cpp',
+  # 'src/shader/shaders/circle.cpp',
   embed_shaders[0],
 ]
 
