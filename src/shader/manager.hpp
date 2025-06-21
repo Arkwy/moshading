@@ -7,6 +7,7 @@
 
 #include "src/gpu_context.hpp"
 #include "shader.hpp"
+#include "shaders/circle.hpp"
 
 
 struct ShaderManager {
@@ -17,7 +18,7 @@ struct ShaderManager {
     ShaderManager(const ShaderManager&) = delete;
     ShaderManager(ShaderManager&&) = delete;
 
-    ~ShaderManager();
+    ~ShaderManager() = default;
 
     void display();
     void render() const;

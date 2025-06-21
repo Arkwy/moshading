@@ -5,18 +5,11 @@
 #include <chrono>
 #include <webgpu/webgpu.hpp>
 
-#include "shader.hpp"
-#include "shaders/circle.hpp"
-#include "src/log.hpp"
-
-
 
 ShaderManager::ShaderManager(const GPUContext& ctx, unsigned int width, unsigned int height)
     : ctx(ctx), shaders(), width(width), height(height) {
     init();
 }
-
-ShaderManager::~ShaderManager() {}
 
 
 void ShaderManager::init() {
@@ -141,13 +134,9 @@ void ShaderManager::resize(unsigned int new_width, unsigned int new_height) {
 
 
 void ShaderManager::add_shader(ShaderVariant&& shader) {
-    Log::error("ok1");
     std::visit([&](auto& s){s.init(ctx);}, shader);
-    Log::error("ok2");
     std::visit([&](auto& s){s.init_pipeline(ctx, *default_bind_group_layout);}, shader);
-    Log::error("ok3");
     shaders.push_back(std::move(shader));
-    Log::error("ok4");
 }
 
 

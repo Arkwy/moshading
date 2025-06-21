@@ -13,15 +13,19 @@ struct Shader<ShaderKind::Circle> : public ShaderBase<Shader<ShaderKind::Circle>
     Shader(const std::string& name, const char* const vertex_code, const char* const frag_code)
         : ShaderBase<Shader<ShaderKind::Circle>>(name, vertex_code, frag_code) {}
 
-
     struct alignas(16) Uniforms {
-        float center_x;
-        float center_y;
-        float radius;
-        float border_width;
+        union {
+            struct {
+                float center_x;
+                float center_y;
+                float radius;
+                float border_width;
+            };
+            float raw[4];
+        };
     };
 
-    Uniforms uniforms = {0.0, 0.0, 1.0, 0.1};
+    Uniforms uniforms = {{{0.0, 0.0, 1.0, 0.1}}};
 
     wgpu::raii::BindGroupLayout bind_group_layout;
     wgpu::raii::Buffer buffer;
@@ -80,9 +84,7 @@ struct Shader<ShaderKind::Circle> : public ShaderBase<Shader<ShaderKind::Circle>
 
 
     void display() {
-        ImGui::DragFloat("x", &(uniforms.center_x), 0.01, -1.0, 10);
-        ImGui::SameLine();
-        ImGui::DragFloat("y", &(uniforms.center_y), 0.01, -1.0, 10);
+        ImGui::DragFloat2("pos", uniforms.raw, 0.01, -1.0, 10);
         ImGui::DragFloat("radius", &(uniforms.radius), 0.01, 0.0, 10);
         ImGui::DragFloat("width", &(uniforms.border_width), 0.01, 0.0, 10);
     }

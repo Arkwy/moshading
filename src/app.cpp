@@ -9,8 +9,6 @@
 
 #include "app.hpp"
 #include "shaders_code.hpp"
-#include "src/shader/shader.hpp"
-#include "src/shader/shaders/circle.hpp"
 
 ImVec2 side_base_size(const ImVec2& window_size) { return ImVec2(window_size.x / 4., window_size.y); };
 
