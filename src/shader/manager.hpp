@@ -18,7 +18,7 @@ struct ShaderManager {
     ShaderManager(const ShaderManager&) = delete;
     ShaderManager(ShaderManager&&) = delete;
 
-    ~ShaderManager() = default;
+    // ~ShaderManager() = default;
 
     void display();
     void render() const;
