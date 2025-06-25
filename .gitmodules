@@ -1,8 +1,8 @@
 [submodule "imgui"]
 	path = imgui
 	url = https://github.com/ocornut/imgui.git
-[submodule "subprojects/wgpu-native"]
-	path = subprojects/wgpu-native
+[submodule "subproject/wgpu-native"]
+	path = subproject/wgpu-native
 	url = https://github.com/gfx-rs/wgpu-native.git
 [submodule "tinyfiledialogs"]
 	path = tinyfiledialogs
