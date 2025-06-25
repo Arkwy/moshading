@@ -7,8 +7,8 @@
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    # submodules = true;
   };
+  inputs.self.submodules = true;
 
   outputs =
     inputs:
@@ -34,6 +34,7 @@
             };
           }
         );
+
     in
     {
       overlays.default = final: prev: {
@@ -173,56 +174,64 @@
         }
       );
 
-      packages = forEachSupportedSystem (
-        { pkgs }:
-        {
-          default = pkgs.clangStdenv.mkDerivation {
-            pname = "moshading";
-            version = "0.1.0";
+      # packages = forEachSupportedSystem (
+      #   { pkgs }:
+      #   {
+      #     default = pkgs.clangStdenv.mkDerivation {
+      #       pname = "moshading";
+      #       version = "0.1.0";
 
-            src = inputs.self;
+      #       src = ./.;
 
-            nativeBuildInputs = with pkgs; [
-              python3
-              meson
-              glew
-              ninja
-              pkg-config
-              clang
-              wayland
-              wayland-protocols
-              libxkbcommon
-              xorg.libX11
-              xorg.libXrandr
-              xorg.libXinerama
-              xorg.libXcursor
-              xorg.libXi
-              vulkan-loader
-              vulkan-headers
-              vulkan-tools
-              glfw
-              wgpu-native
-            ];
+      #       nativeBuildInputs = with pkgs; [
+      #         python3
+      #         meson
+      #         glew
+      #         ninja
+      #         pkg-config
+      #         clang
+      #         rustToolchain
+      #         openssl
+      #         pkg-config
+      #         cargo-deny
+      #         cargo-edit
+      #         cargo-watch
+      #       ];
 
-            buildInputs = [ ];
+      #       buildInputs = with pkgs; [
+      #         wayland
+      #         wayland-protocols
+      #         libxkbcommon
+      #         xorg.libX11
+      #         xorg.libXrandr
+      #         xorg.libXinerama
+      #         xorg.libXcursor
+      #         xorg.libXi
+      #         vulkan-loader
+      #         vulkan-headers
+      #         vulkan-tools
+      #         glfw
+      #         wgpu-native
+      #       ];
 
-            configurePhase = ''
-              echo "Building..."
-              ls -lR .
-              meson setup build --buildtype=release
-            '';
 
-            buildPhase = ''
-              meson -C build
-            '';
+      #       configurePhase = ''
+      #         meson setup build
+      #       '';
 
-            installPhase = ''
-              mkdir -p $out/bin
-              cp build/moshading $out/bin/
-            '';
-          };
-        }
-      );
+      #       buildPhase = ''
+      #         echo 'Build ...'
+      #         meson -C build
+      #       '';
+
+      #       installPhase = ''
+      #         echo 'Install ...'
+      #         mkdir -p $out/bin
+      #         cp build/moshading $out/bin/
+      #       '';
+      #     };
+      #   }
+      # );
 
     };
 }
