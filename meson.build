@@ -1,4 +1,4 @@
-project('moshading', 'cpp', default_options : ['cpp_std=c++23'])
+project('moshading', ['cpp', 'c'], default_options : ['cpp_std=c++23'])
 
 cpp = meson.get_compiler('cpp')
 is_wasm = cpp.get_id() == 'emscripten'
@@ -25,19 +25,28 @@ imgui_files = [
     imgui_dir / 'backends/imgui_impl_wgpu.cpp',
 ]
 
+# stb
+stb_dir = 'stb'
+stb_files = [ stb_dir / 'stb_image.cpp' ]
+
+# tinyfd
+tinyfd_dir = 'tinyfiledialogs'
+tinyfd_files = [ tinyfd_dir / 'tinyfiledialogs.c' ]
+
 # Source files
 moshading_files = [
   'src/main.cpp',
   'src/gpu_context.cpp',
   'src/renderer.cpp',
   'src/app.cpp',
+  'src/file_loading.cpp',
   'src/shader/manager.cpp',
   'src/shader/parameter.cpp',
   # 'src/shader/shaders/circle.cpp',
   embed_shaders[0],
 ]
 
-files = moshading_files + imgui_files
+files = moshading_files + imgui_files + stb_files
 
 if is_wasm
 
@@ -62,6 +71,7 @@ if is_wasm
         files,
         include_directories: [
             include_directories(imgui_dir),
+            include_directories(stb_dir),
             include_directories('emscripten'),
         ],
         dependencies: [],
@@ -80,9 +90,10 @@ else
 
     executable(
         'moshading',
-        files,
+        files + tinyfd_files,
         include_directories: [
             include_directories(imgui_dir),
+            include_directories(stb_dir),
             include_directories('wgpu-native'),
         ],
         dependencies: [
@@ -92,7 +103,7 @@ else
             glew_dep,
         ],
         link_args: ['-lwgpu_native'],
-        cpp_args: ['-g', '-O3', '-DIMGUI_IMPL_WEBGPU_BACKEND_WGPU', '-DWEBGPU_BACKEND_WGPU'],
+        cpp_args: ['-g', '-O3', '-DIMGUI_IMPL_WEBGPU_BACKEND_WGPU', '-DWEBGPU_BACKEND_WGPU', '-fdiagnostics-all-candidates'],
         install: false,
     )
 endif

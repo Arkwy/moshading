@@ -4,27 +4,51 @@
 
 #include <webgpu/webgpu-raii.hpp>
 
+#include "shaders_code.hpp"
 #include "src/shader/shader.hpp"
+#include "webgpu/webgpu.hpp"
 
 
 template <>
-struct Shader<ShaderKind::Circle> : public ShaderBase<Shader<ShaderKind::Circle>> {
-    Shader(const std::string& name, const char* const vertex_code, const char* const frag_code)
-        : ShaderBase<Shader<ShaderKind::Circle>>(name, vertex_code, frag_code) {}
+struct Shader<ShaderKind::ChromaticAbberation> : public ShaderBase<Shader<ShaderKind::ChromaticAbberation>> {
+    Shader(const std::string& name)
+        : ShaderBase<Shader<ShaderKind::ChromaticAbberation>>(name, fullscreen_vertex, chromatic_aberration) {}
+
+    enum class Mode : int {
+        Uniform,
+        LinearScaling,
+        QuadraticScaling,
+    };
+    const char* modes[3] = {"Uniform", "LinearScaling", "QuadraticScaling"};
 
     struct alignas(16) Uniforms {
         union {
             struct {
-                float center_x;
-                float center_y;
-                float radius;
-                float border_width;
+                float uni_red_shift_x;
+                float uni_red_shift_y;
+                float uni_green_shift_x;
+                float uni_green_shift_y;
+                float uni_blue_shift_x;
+                float uni_blue_shift_y;
+                float scale_center_x;
+                float scale_center_y;
+                float scale_red_intensity;
+                float scale_green_intensity;
+                float scale_blue_intensity;
+                Mode mode;
             };
-            float raw[4];
+            struct {
+                float uni_red_shift[2];
+                float uni_green_shift[2];
+                float uni_blue_shift[2];
+                float scale_center[2];
+                float scale_intensity[3];
+                int mode_id;
+            };
         };
     };
 
-    Uniforms uniforms = {{{0.0, 0.0, 1.0, 0.1}}};
+    Uniforms uniforms = {{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, Mode::Uniform}}};
 
     wgpu::raii::BindGroupLayout bind_group_layout;
     wgpu::raii::Buffer buffer;
@@ -83,9 +107,18 @@ struct Shader<ShaderKind::Circle> : public ShaderBase<Shader<ShaderKind::Circle>
 
 
     void display() {
-        ImGui::DragFloat2("pos", uniforms.raw, 0.01, -1.0, 10);
-        ImGui::DragFloat("radius", &(uniforms.radius), 0.01, 0.0, 10);
-        ImGui::DragFloat("width", &(uniforms.border_width), 0.01, 0.0, 10);
+        ImGui::Combo("Mode", &uniforms.mode_id, modes, 3);
+        switch (uniforms.mode) {
+            case Mode::Uniform:
+                ImGui::DragFloat2("red", uniforms.uni_red_shift, 0.001);
+                ImGui::DragFloat2("green", uniforms.uni_green_shift, 0.001);
+                ImGui::DragFloat2("blue", uniforms.uni_blue_shift, 0.001);
+                break;
+            default:
+                ImGui::DragFloat2("center", uniforms.scale_center, 0.01);
+                ImGui::DragFloat3("intensity", uniforms.scale_intensity, 0.001);
+                break;
+        }
     }
 
     void write_buffers(wgpu::Queue& queue) const { queue.writeBuffer(*buffer, 0, &uniforms, sizeof(uniforms)); }

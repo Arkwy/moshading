@@ -7,10 +7,9 @@
 #include <webgpu/webgpu-raii.hpp>
 
 #include "src/gpu_context.hpp"
-#include "src/log.hpp"
 #include "webgpu/webgpu.hpp"
 
-#define SHADER_VARIANTS X(NoParam), X(Circle)
+#define SHADER_VARIANTS X(NoParam), X(Circle), X(ChromaticAbberation), X(Image), X(Noise), X(Dithering)
 
 #define X(name) name
 enum class ShaderKind { SHADER_VARIANTS };
@@ -31,10 +30,8 @@ struct ShaderBase {
 
     void release() { static_cast<Derived*>(this)->release(); }
 
-    ShaderBase(ShaderBase& sb) = delete;
-    ShaderBase(ShaderBase&& sb) = default;
-
-
+    ShaderBase(const ShaderBase<Derived>& sb) = delete;
+    ShaderBase(ShaderBase<Derived>&& sb) = default;
 
     void display() { static_cast<Derived*>(this)->display(); }
 

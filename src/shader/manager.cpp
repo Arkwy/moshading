@@ -3,7 +3,10 @@
 #include <imgui.h>
 
 #include <chrono>
+#include <memory>
 #include <webgpu/webgpu.hpp>
+
+#include "src/file_loading.hpp"
 
 
 ShaderManager::ShaderManager(const GPUContext& ctx, unsigned int width, unsigned int height)
@@ -119,8 +122,8 @@ void ShaderManager::init() {
     bind_group_A = ctx.get_device().createBindGroup(bg_A_desc);
     bind_group_B = ctx.get_device().createBindGroup(bg_B_desc);
 
-    for (ShaderVariant& s : shaders) {
-        std::visit([&](auto& s){s.init_pipeline(ctx, *default_bind_group_layout);}, s);
+    for (std::unique_ptr<ShaderVariant>& s : shaders) {
+        std::visit([&](auto& s){s.init_pipeline(ctx, *default_bind_group_layout);}, *s);
     }
 }
 
@@ -136,17 +139,17 @@ void ShaderManager::resize(unsigned int new_width, unsigned int new_height) {
 void ShaderManager::add_shader(ShaderVariant&& shader) {
     std::visit([&](auto& s){s.init(ctx);}, shader);
     std::visit([&](auto& s){s.init_pipeline(ctx, *default_bind_group_layout);}, shader);
-    shaders.push_back(std::move(shader));
+    shaders.push_back(std::make_unique<ShaderVariant>(std::move(shader)));
 }
 
 
-// void ShaderManager::reorder_element(size_t index, size_t new_index) {
-//     if (index < new_index) {
-//         std::rotate(shaders.begin() + index, shaders.begin() + index + 1, shaders.begin() + new_index + 1);
-//     } else {
-//         std::rotate(shaders.begin() + new_index, shaders.begin() + index, shaders.begin() + index + 1);
-//     }
-// }
+void ShaderManager::reorder_element(size_t index, size_t new_index) {
+    if (index < new_index) {
+        std::rotate(shaders.begin() + index, shaders.begin() + index + 1, shaders.begin() + new_index + 1);
+    } else {
+        std::rotate(shaders.begin() + new_index, shaders.begin() + index, shaders.begin() + index + 1);
+    }
+}
 
 
 void ShaderManager::render() const {
@@ -163,7 +166,7 @@ void ShaderManager::render() const {
 
     queue->writeBuffer(*default_uniforms, 0, &du, sizeof(du));
     for (size_t i = 0; i < shaders.size(); i++) {
-        std::visit([&](auto& shader) { shader.write_buffers(*queue); }, shaders[i]);
+        std::visit([&](auto& shader) { shader.write_buffers(*queue); }, *shaders[i]);
     }
 
     wgpu::RenderPassColorAttachment color_attachment;
@@ -177,28 +180,32 @@ void ShaderManager::render() const {
     render_pass_desc.colorAttachments = &color_attachment;
     render_pass_desc.depthStencilAttachment = nullptr;
 
+    wgpu::raii::CommandEncoder cmd_encoder = ctx.get_device().createCommandEncoder();
+
+    // Clear previous render
+    color_attachment.view = *texture_view_A;
+    cmd_encoder->beginRenderPass(render_pass_desc).end();
+
     for (size_t i = 0; i < shaders.size(); i++) {
         tv = i % 2 ? *texture_view_A : *texture_view_B;
         wgpu::BindGroup default_bg = i % 2 ? *bind_group_B : *bind_group_A;
-        // std::optional<wgpu::raii::BindGroup> shader_specific_bg = shaders[i].shader_specific_bind_group_layout;
 
         color_attachment.view = tv;
 
-        wgpu::raii::CommandEncoder cmd_encoder = ctx.get_device().createCommandEncoder();
         wgpu::raii::RenderPassEncoder pass_encoder = cmd_encoder->beginRenderPass(render_pass_desc);
 
         pass_encoder->setViewport(0.0f, 0.0f, width, height, 0.0f, 1.0f);
         pass_encoder->setScissorRect(0, 0, width, height);
         pass_encoder->setBindGroup(0, default_bg, 0, nullptr);
-        std::visit([&](auto& s){s.set_bind_groups(*pass_encoder);}, shaders[i]);
-        pass_encoder->setPipeline(std::visit([](auto& s){return s.get_render_pipeline();}, shaders[i]));
+        std::visit([&](auto& s){s.set_bind_groups(*pass_encoder);}, *shaders[i]);
+        pass_encoder->setPipeline(std::visit([](auto& s){return s.get_render_pipeline();}, *shaders[i]));
         pass_encoder->draw(3, 1, 0, 0);
         pass_encoder->end();
 
-        wgpu::raii::CommandBuffer cmd_buffer = cmd_encoder->finish();
-
-        queue->submit(1, &(*cmd_buffer));
     }
+
+    wgpu::raii::CommandBuffer cmd_buffer = cmd_encoder->finish();
+    queue->submit(1, &(*cmd_buffer));
 
     // compute display position and dim
     ImVec2 display_region = ImGui::GetContentRegionAvail();
@@ -221,10 +228,10 @@ void ShaderManager::render() const {
 
 
 void ShaderManager::display() {
-    // int to_remode_idx = -1; // store shader idx user decided to remove or -1 if no remove action
+    int to_remove_idx = -1; // store shader idx user decided to remove or -1 if no remove action
     for (size_t i = 0; i < shaders.size(); i++) {
-        ShaderVariant& shader_desc = shaders[i];
-        const char* const shader_name = std::visit([](auto& s) { return s.name.c_str(); }, shader_desc);
+        std::unique_ptr<ShaderVariant>& shader_desc = shaders[i];
+        const char* const shader_name = std::visit([](auto& s) { return s.name.c_str(); }, *shader_desc);
 
         ImGui::PushID(i);
 
@@ -260,7 +267,7 @@ void ShaderManager::display() {
             ImGui::SameLine();
 
             if (ImGui::Button("x")) {
-                // to_remode_idx = i;
+                to_remove_idx = i;
             }
 
             ImGui::PopStyleColor(3);
@@ -269,7 +276,7 @@ void ShaderManager::display() {
             ImGui::EndMenuBar();
         }
 
-        std::visit([](auto& s) { return s.display(); }, shader_desc);
+        std::visit([](auto& s) { return s.display(); }, *shader_desc);
 
         ImGui::EndChild();
 
@@ -278,8 +285,8 @@ void ShaderManager::display() {
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_SHADER_CELL")) {
                 IM_ASSERT(payload->DataSize == sizeof(size_t));
-                // size_t payload_i = *(const size_t*)payload->Data;
-                // reorder_element(payload_i, i);
+                size_t payload_i = *(const size_t*)payload->Data;
+                reorder_element(payload_i, i);
             }
             ImGui::EndDragDropTarget();
         }
@@ -287,7 +294,11 @@ void ShaderManager::display() {
         ImGui::PopID();
     }
 
-    // if (to_remode_idx >= 0) {
-    //     shaders.erase(shaders.begin() + to_remode_idx);
-    // }
+    if (ImGui::Button("open file")) {
+        open_file_dialog();
+    }
+
+    if (to_remove_idx >= 0) {
+        shaders.erase(shaders.begin() + to_remove_idx);
+    }
 }

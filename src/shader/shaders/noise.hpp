@@ -4,27 +4,46 @@
 
 #include <webgpu/webgpu-raii.hpp>
 
+#include "shaders_code.hpp"
 #include "src/shader/shader.hpp"
+#include "webgpu/webgpu.hpp"
 
 
 template <>
-struct Shader<ShaderKind::Circle> : public ShaderBase<Shader<ShaderKind::Circle>> {
-    Shader(const std::string& name, const char* const vertex_code, const char* const frag_code)
-        : ShaderBase<Shader<ShaderKind::Circle>>(name, vertex_code, frag_code) {}
+struct Shader<ShaderKind::Noise> : public ShaderBase<Shader<ShaderKind::Noise>> {
+    Shader(const std::string& name)
+        : ShaderBase<Shader<ShaderKind::Noise>>(name, fullscreen_vertex, noise) {}
+
+    enum class Mode : int {
+        Grey,
+        Colored,
+    };
+    const char* modes[2] = {"Grey", "Colored"};
 
     struct alignas(16) Uniforms {
         union {
             struct {
-                float center_x;
-                float center_y;
-                float radius;
-                float border_width;
+                float mean_red;
+                float mean_green;
+                float mean_blue;
+                float mean;
+                float variance_red;
+                float variance_green;
+                float variance_blue;
+                float variance;
+                Mode mode;
             };
-            float raw[4];
+            struct {
+                float colored_mean[3];
+                float _;
+                float colored_variance[3];
+                float _;
+                int mode_id;
+            };
         };
     };
 
-    Uniforms uniforms = {{{0.0, 0.0, 1.0, 0.1}}};
+    Uniforms uniforms = {{{0.0, 0.0, 0.0, 0.0, 0.05, 0.05, 0.05, 0.05, Mode::Colored}}};
 
     wgpu::raii::BindGroupLayout bind_group_layout;
     wgpu::raii::Buffer buffer;
@@ -83,9 +102,17 @@ struct Shader<ShaderKind::Circle> : public ShaderBase<Shader<ShaderKind::Circle>
 
 
     void display() {
-        ImGui::DragFloat2("pos", uniforms.raw, 0.01, -1.0, 10);
-        ImGui::DragFloat("radius", &(uniforms.radius), 0.01, 0.0, 10);
-        ImGui::DragFloat("width", &(uniforms.border_width), 0.01, 0.0, 10);
+        ImGui::Combo("Mode", &uniforms.mode_id, modes, 2);
+        switch (uniforms.mode) {
+            case Mode::Grey:
+                ImGui::DragFloat("mean", &uniforms.mean, 0.001);
+                ImGui::DragFloat("variance", &uniforms.variance, 0.001, 0, 100);
+                break;
+            default:
+                ImGui::DragFloat3("mean", uniforms.colored_mean, 0.001);
+                ImGui::DragFloat3("variance", uniforms.colored_variance, 0.001);
+                break;
+        }
     }
 
     void write_buffers(wgpu::Queue& queue) const { queue.writeBuffer(*buffer, 0, &uniforms, sizeof(uniforms)); }

@@ -19,6 +19,7 @@
 
 #include "renderer.hpp"
 #include "gpu_context.hpp"
+#include "file_loading.hpp"
 
 int main() {
     GPUContext ctx;

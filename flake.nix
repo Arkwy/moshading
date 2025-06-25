@@ -7,6 +7,7 @@
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # submodules = true;
   };
 
   outputs =
@@ -166,10 +167,62 @@
                   ];
 
                 postShellHook = ''
-                    cargo install naga-cli
+                  cargo install naga-cli
                 '';
               };
         }
       );
+
+      packages = forEachSupportedSystem (
+        { pkgs }:
+        {
+          default = pkgs.clangStdenv.mkDerivation {
+            pname = "moshading";
+            version = "0.1.0";
+
+            src = inputs.self;
+
+            nativeBuildInputs = with pkgs; [
+              python3
+              meson
+              glew
+              ninja
+              pkg-config
+              clang
+              wayland
+              wayland-protocols
+              libxkbcommon
+              xorg.libX11
+              xorg.libXrandr
+              xorg.libXinerama
+              xorg.libXcursor
+              xorg.libXi
+              vulkan-loader
+              vulkan-headers
+              vulkan-tools
+              glfw
+              wgpu-native
+            ];
+
+            buildInputs = [ ];
+
+            configurePhase = ''
+              echo "Building..."
+              ls -lR .
+              meson setup build --buildtype=release
+            '';
+
+            buildPhase = ''
+              meson -C build
+            '';
+
+            installPhase = ''
+              mkdir -p $out/bin
+              cp build/moshading $out/bin/
+            '';
+          };
+        }
+      );
+
     };
 }

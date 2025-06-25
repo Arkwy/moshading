@@ -4,27 +4,45 @@
 
 #include <webgpu/webgpu-raii.hpp>
 
+#include "imgui_internal.h"
+#include "shaders_code.hpp"
 #include "src/shader/shader.hpp"
+#include "webgpu/webgpu.hpp"
 
 
 template <>
-struct Shader<ShaderKind::Circle> : public ShaderBase<Shader<ShaderKind::Circle>> {
-    Shader(const std::string& name, const char* const vertex_code, const char* const frag_code)
-        : ShaderBase<Shader<ShaderKind::Circle>>(name, vertex_code, frag_code) {}
+struct Shader<ShaderKind::Dithering> : public ShaderBase<Shader<ShaderKind::Dithering>> {
+    Shader(const std::string& name)
+        : ShaderBase<Shader<ShaderKind::Dithering>>(name, fullscreen_vertex, dithering) {}
+
+    enum class Mode : int {
+        Threshold, 
+        Random, 
+        Halftone, 
+        Bayer, 
+        VoidAndCluster
+    };
+    const char* modes[5] = {"Threshold", "Random", "Halftone", "Ordered (bayer)", "Ordered (void-and-cluster)"};
 
     struct alignas(16) Uniforms {
         union {
             struct {
-                float center_x;
-                float center_y;
-                float radius;
-                float border_width;
+                Mode mode;
+                bool colored;
+                float threshold;
+                float threshold_r;
+                float threshold_g;
+                float threshold_b;
             };
-            float raw[4];
+            struct {
+                int mode_id;
+                bool _;
+                float _;
+            };
         };
     };
 
-    Uniforms uniforms = {{{0.0, 0.0, 1.0, 0.1}}};
+    Uniforms uniforms = {{{Mode::Threshold, false, 0.0}}};
 
     wgpu::raii::BindGroupLayout bind_group_layout;
     wgpu::raii::Buffer buffer;
@@ -83,9 +101,14 @@ struct Shader<ShaderKind::Circle> : public ShaderBase<Shader<ShaderKind::Circle>
 
 
     void display() {
-        ImGui::DragFloat2("pos", uniforms.raw, 0.01, -1.0, 10);
-        ImGui::DragFloat("radius", &(uniforms.radius), 0.01, 0.0, 10);
-        ImGui::DragFloat("width", &(uniforms.border_width), 0.01, 0.0, 10);
+        ImGui::Combo("Mode", &uniforms.mode_id, modes, 2);
+        switch (uniforms.mode) {
+            case Mode::Threshold:
+                ImGui::DragFloat("threshold", &uniforms.threshold, 0.001);
+                break;
+            default:
+                break;
+        }
     }
 
     void write_buffers(wgpu::Queue& queue) const { queue.writeBuffer(*buffer, 0, &uniforms, sizeof(uniforms)); }

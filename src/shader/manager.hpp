@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <vector>
 #include <chrono>
 
@@ -8,6 +9,10 @@
 #include "src/gpu_context.hpp"
 #include "shader.hpp"
 #include "shaders/circle.hpp"
+#include "shaders/chromatic_aberration.hpp"
+#include "shaders/image.hpp"
+#include "shaders/noise.hpp"
+#include "shaders/dithering.hpp"
 
 
 struct ShaderManager {
@@ -18,12 +23,10 @@ struct ShaderManager {
     ShaderManager(const ShaderManager&) = delete;
     ShaderManager(ShaderManager&&) = delete;
 
-    // ~ShaderManager() = default;
-
     void display();
     void render() const;
     void add_shader(ShaderVariant&& shader);  // TODO move to private when ui is here
-    // void reorder_element(size_t index, size_t new_index);  // TODO move to private when ui is here
+    void reorder_element(size_t index, size_t new_index);  // TODO move to private when ui is here
 
   private:
     struct alignas(16) DefaultUniforms {
@@ -44,12 +47,13 @@ struct ShaderManager {
     wgpu::raii::TextureView texture_view_B;
     wgpu::raii::BindGroup bind_group_B;
 
-    std::vector<ShaderVariant> shaders;
+    std::vector<std::unique_ptr<ShaderVariant>> shaders;
 
     unsigned int width;
     unsigned int height;
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
 
+    unsigned int stage = ~0u;
 
     void init();
 
