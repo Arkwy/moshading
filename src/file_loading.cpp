@@ -1,5 +1,7 @@
 #include <iostream>
 #include <vector>
+#include "src/shader/shader.hpp"
+#include "file_loading.hpp"
 
 #ifdef __EMSCRIPTEN__
 
@@ -7,7 +9,9 @@
 #include <emscripten/bind.h>
 
 // Callback from JS with file data
-extern "C" void on_file_loaded(uintptr_t dataPtr, int size) {
+extern "C" void on_file_loaded(uintptr_t dataPtr, int size) { // , void* manager_ptr) {
+    // ShaderManager manager = reinterpret_cast<uint8_t*>(manager_ptr) 
+
     const uint8_t* data = reinterpret_cast<uint8_t*>(dataPtr);
     std::vector<uint8_t> file_data(data, data + size);
 
@@ -53,10 +57,10 @@ extern "C" void EMSCRIPTEN_KEEPALIVE launch_file_picker() {
 }
 
 #else
-#include <fstream>
 #include <tinyfiledialogs/tinyfiledialogs.h>
+#include <filesystem>
 
-void open_file_dialog() {
+void open_file_dialog(ShaderManager& manager) {
     const char *filters[] = { "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif" };
 
     const char *filename = tinyfd_openFileDialog(
@@ -69,34 +73,10 @@ void open_file_dialog() {
     );
 
     if (!filename) {
-        std::cout << "No file selected.\n";
         return;
     }
 
-    std::cout << "Selected file: " << filename << std::endl;
-
-    // Load file into memory
-    std::ifstream file(filename, std::ios::binary | std::ios::ate);
-    if (!file) {
-        std::cerr << "Error opening file.\n";
-        return;
-    }
-
-    std::streamsize size = file.tellg();
-    file.seekg(0, std::ios::beg);
-
-    std::vector<unsigned char> buffer(size);
-    if (!file.read(reinterpret_cast<char*>(buffer.data()), size)) {
-        std::cerr << "Error reading file.\n";
-        return;
-    }
-
-    std::cout << "File loaded, size: " << size << " bytes\n";
-    std::cout << "First 10 bytes: ";
-    for (int i = 0; i < std::min<size_t>(10, buffer.size()); ++i) {
-        std::cout << std::hex << (int)buffer[i] << " ";
-    }
-    std::cout << std::endl;
+    manager.add_shader(Shader<ShaderKind::Image>(std::filesystem::path(filename).filename().stem().string(), filename));
 }
 
 #endif

@@ -3,10 +3,6 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    rust-overlay = {
-      url = "github:oxalica/rust-overlay";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
   inputs.self.submodules = true;
 
@@ -28,7 +24,6 @@
             pkgs = import inputs.nixpkgs {
               inherit system;
               overlays = [
-                inputs.rust-overlay.overlays.default
                 inputs.self.overlays.default
               ];
             };
@@ -38,24 +33,24 @@
     in
     {
       overlays.default = final: prev: {
-        rustToolchain =
-          let
-            rust = prev.rust-bin;
-          in
-          if builtins.pathExists ./rust-toolchain.toml then
-            rust.fromRustupToolchainFile ./rust-toolchain.toml
-          else if builtins.pathExists ./rust-toolchain then
-            rust.fromRustupToolchainFile ./rust-toolchain
-          else
-            rust.stable.latest.default.override {
-              extensions = [
-                "rust-src"
-                "rustfmt"
-              ];
-              targets = [
-                "wasm32-unknown-emscripten"
-              ];
-            };
+        wgpu-native = prev.wgpu-native.overrideAttrs (oldAttrs: {
+          postInstall = (oldAttrs.postInstall or "") + ''
+            mkdir -p $dev/lib/pkgconfig
+
+            cat > $dev/lib/pkgconfig/wgpu-native.pc <<EOF
+            prefix=$dev
+            exec_prefix=$prefix
+            libdir=$exec_prefix/lib
+            includedir=$prefix/include
+
+            Name: wgpu-native
+            Description: Native WebGPU implementation based on wgpu-core
+            Version: ${oldAttrs.version}
+            Libs: -L$out -lwgpu_native
+            Cflags: -I$dev/include/webgpu
+            EOF
+          '';
+        });
       };
 
       devShells = forEachSupportedSystem (
@@ -76,26 +71,21 @@
                   meson
                   ninja
                   pkg-config
-                  glew
                   cmake
 
                   # makes lsp work
                   bear
 
-                  # imgui
-                  # imgui # using submodule instead
+                  # rendering things
+                  ## general
+                  glew
                   emscripten
                   glfw
-
-                  # wgpu-native + rust (to build wgpu-native) + dep
-                  rustToolchain
-                  openssl
-                  pkg-config
-                  cargo-deny
-                  cargo-edit
-                  cargo-watch
-                  rust-analyzer
                   wgpu-native
+                  vulkan-loader
+                  vulkan-tools
+                  vulkan-headers
+                  ## linux
                   wayland-scanner
                   wayland
                   wayland-protocols
@@ -105,133 +95,99 @@
                   xorg.libXinerama
                   xorg.libXcursor
                   xorg.libXi
-                  vulkan-loader
-                  vulkan-tools
-                  vulkan-headers
+                  ## windows
+                  # TODO
+                  ## mac os
+                  # TODO
 
                   # wgsl
                   wgsl-analyzer
+
+                  # python scripts
+                  python313
+                  python313Packages.python-lsp-server
+                  python313Packages.tkinter
                 ];
 
-                LIBCLANG_PATH = pkgs.lib.makeLibraryPath [ pkgs.llvmPackages_latest.libclang.lib ];
                 shellHook = ''
-                  export PATH=$PATH:''${CARGO_HOME:-~/.cargo}/bin
-                  export PATH=$PATH:''${RUSTUP_HOME:-~/.rustup}/toolchains/$RUSTC_VERSION-x86_64-unknown-linux-gnu/bin/
                   if [ ! -d $(pwd)/.emscripten_cache ]; then
                     cp -R ${pkgs.emscripten}/share/emscripten/cache/ $(pwd)/.emscripten_cache
                     chmod u+rwX -R $(pwd)/.emscripten_cache
                   fi
                   export EM_CACHE="$(pwd)/.emscripten_cache"
                 '';
-                # Add precompiled library to rustc search path
-                RUSTFLAGS = (
-                  builtins.map (a: ''-L ${a}/lib'') [
-                    # add libraries here (e.g. pkgs.libvmi)
-                  ]
-                );
+
                 LD_LIBRARY_PATH =
                   with pkgs;
                   lib.makeLibraryPath [
-                    # load external libraries that you need in your rust project here
-                    wgpu-native
-                    wayland
-                    wayland-protocols
-                    libxkbcommon
-                    xorg.libX11
-                    xorg.libXrandr
-                    xorg.libXinerama
-                    xorg.libXcursor
-                    xorg.libXi
                     vulkan-loader
-                    vulkan-tools
-                    vulkan-headers
                   ];
-
-                # Add glibc, clang, glib, and other headers to bindgen search path
-
-                BINDGEN_EXTRA_CLANG_ARGS =
-                  # Includes normal include path
-                  let
-                    clangMajorVersion = builtins.head (builtins.match "([0-9]+).*" pkgs.libclang.version);
-                  in
-                  (builtins.map (a: ''-I${a}/include'') [
-                    # add dev libraries here (e.g. pkgs.libvmi.dev)
-                    pkgs.glibc_multi.dev
-                  ])
-                  # Includes with special directory paths
-                  ++ [
-                    ''-I${pkgs.libclang.lib}/lib/clang/${clangMajorVersion}/include''
-                    ''-I${pkgs.glibc_multi.dev}/include/glib-2.0''
-                    ''-I${pkgs.glibc_multi.out}/lib/glib-2.0/include/''
-                    # ''-I${pkgs.wgpu-native.dev}/include/webgpu''
-                    "-I${toString ./subprojects/wgpu-native}/ffi"
-                  ];
-
-                postShellHook = ''
-                  cargo install naga-cli
-                '';
               };
         }
       );
 
-      # packages = forEachSupportedSystem (
-      #   { pkgs }:
-      #   {
-      #     default = pkgs.clangStdenv.mkDerivation {
-      #       pname = "moshading";
-      #       version = "0.1.0";
+      packages = forEachSupportedSystem (
+        { pkgs }:
+        let
+          pname = "moshading";
+          version = "0.1.0";
+        in {
+          default = pkgs.clangStdenv.mkDerivation {
+            inherit pname version;
 
-      #       src = ./.;
+            src = ./.;
 
-      #       nativeBuildInputs = with pkgs; [
-      #         python3
-      #         meson
-      #         glew
-      #         ninja
-      #         pkg-config
-      #         clang
-      #         rustToolchain
-      #         openssl
-      #         pkg-config
-      #         cargo-deny
-      #         cargo-edit
-      #         cargo-watch
-      #       ];
+            nativeBuildInputs = with pkgs; [
+              python3
+              meson
+              ninja
+              pkg-config
+              makeWrapper
+            ];
 
-      #       buildInputs = with pkgs; [
-      #         wayland
-      #         wayland-protocols
-      #         libxkbcommon
-      #         xorg.libX11
-      #         xorg.libXrandr
-      #         xorg.libXinerama
-      #         xorg.libXcursor
-      #         xorg.libXi
-      #         vulkan-loader
-      #         vulkan-headers
-      #         vulkan-tools
-      #         glfw
-      #         wgpu-native
-      #       ];
+            buildInputs = with pkgs; [
+              wgpu-native
+              glfw
+              glew
+              wayland
+              vulkan-loader
+              xorg.libX11
+              xorg.libXrandr
+              xorg.libXinerama
+              xorg.libXcursor
+              xorg.libXi
+            ];
 
+            configurePhase = ''
+                meson setup build
+            '';
+                buildPhase = ''
+                meson compile -C build
+            '';
+            installPhase = ''
+  mkdir -p $out/bin
+  cp build/moshading $out/bin/moshading-raw
 
-      #       configurePhase = ''
-      #         meson setup build
-      #       '';
+  makeWrapper $out/bin/moshading-raw $out/bin/moshading \
+    --set LD_LIBRARY_PATH ${with pkgs; lib.makeLibraryPath [
+      vulkan-loader
+      glfw
+      wayland
+      xorg.libX11
+      xorg.libXrandr
+      xorg.libXinerama
+      xorg.libXcursor
+      xorg.libXi
+    ]}
+'';
 
-      #       buildPhase = ''
-      #         echo 'Build ...'
-      #         meson -C build
-      #       '';
-
-      #       installPhase = ''
-      #         echo 'Install ...'
-      #         mkdir -p $out/bin
-      #         cp build/moshading $out/bin/
-      #       '';
-      #     };
-      #   }
-      # );
-
+            meta = {
+              description = "C++ project using wgpu-native";
+              license = pkgs.lib.licenses.mit;
+              platforms = pkgs.lib.platforms.unix;
+            };
+          };
+        }
+      );
     };
 }

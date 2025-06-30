@@ -28,21 +28,27 @@ struct Shader<ShaderKind::Dithering> : public ShaderBase<Shader<ShaderKind::Dith
         union {
             struct {
                 Mode mode;
-                bool colored;
+                int colored;
                 float threshold;
+                float _;
                 float threshold_r;
                 float threshold_g;
                 float threshold_b;
+                float _;
             };
             struct {
                 int mode_id;
-                bool _;
+                int _;
+                float _;
+                float _;
+                float threshold_rgb[3];
                 float _;
             };
         };
     };
 
-    Uniforms uniforms = {{{Mode::Threshold, false, 0.0}}};
+
+    Uniforms uniforms = {{{Mode::Threshold, 0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.0}}};
 
     wgpu::raii::BindGroupLayout bind_group_layout;
     wgpu::raii::Buffer buffer;
@@ -102,13 +108,26 @@ struct Shader<ShaderKind::Dithering> : public ShaderBase<Shader<ShaderKind::Dith
 
     void display() {
         ImGui::Combo("Mode", &uniforms.mode_id, modes, 2);
+        bool cd = static_cast<bool>(uniforms.colored);
+        if (ImGui::Checkbox("Color dependant", &cd)) {
+            uniforms.colored = static_cast<int>(cd);
+        }
+        
         switch (uniforms.mode) {
             case Mode::Threshold:
-                ImGui::DragFloat("threshold", &uniforms.threshold, 0.001);
+                if (uniforms.colored == 0) {
+                    ImGui::DragFloat("threshold", &uniforms.threshold, 0.001);
+                } else {
+                    ImGui::DragFloat3("threshold", uniforms.threshold_rgb, 0.001);
+                }
                 break;
             default:
                 break;
         }
+    }
+
+    void reset() {
+        uniforms = {{{Mode::Threshold, false, 0.0}}};
     }
 
     void write_buffers(wgpu::Queue& queue) const { queue.writeBuffer(*buffer, 0, &uniforms, sizeof(uniforms)); }

@@ -121,6 +121,10 @@ struct Shader<ShaderKind::ChromaticAbberation> : public ShaderBase<Shader<Shader
         }
     }
 
+    void reset() {
+        uniforms = {{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, Mode::Uniform}}};
+    }
+
     void write_buffers(wgpu::Queue& queue) const { queue.writeBuffer(*buffer, 0, &uniforms, sizeof(uniforms)); }
 
     void set_bind_groups(wgpu::RenderPassEncoder& pass_encoder) const {

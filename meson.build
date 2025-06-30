@@ -1,4 +1,4 @@
-project('moshading', ['cpp', 'c'], default_options : ['cpp_std=c++23'])
+project('moshading', ['cpp', 'c'], default_options : ['cpp_std=c++26'])
 
 cpp = meson.get_compiler('cpp')
 is_wasm = cpp.get_id() == 'emscripten'
@@ -83,8 +83,9 @@ else
     glfw_dep = dependency('glfw3')
     gl_dep = dependency('gl', required: true)
     glew_dep = dependency('glew', required: true)
+    wgpu_dep = dependency('wgpu-native', required: true)
 
-    subproject('wgpu-native') # Make sure this exists or skip if not using native WebGPU
+    # subproject('wgpu-native') # Make sure this exists or skip if not using native WebGPU
 
     files += 'src/renderer_native.cpp'
 
@@ -101,9 +102,10 @@ else
             glfw_dep,
             gl_dep,
             glew_dep,
+            wgpu_dep,
         ],
         link_args: ['-lwgpu_native'],
-        cpp_args: ['-g', '-O3', '-DIMGUI_IMPL_WEBGPU_BACKEND_WGPU', '-DWEBGPU_BACKEND_WGPU', '-fdiagnostics-all-candidates'],
+        cpp_args: ['-g', '-O3', '-DIMGUI_IMPL_WEBGPU_BACKEND_WGPU', '-DWEBGPU_BACKEND_WGPU'],
         install: false,
     )
 endif

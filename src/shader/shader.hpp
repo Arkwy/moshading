@@ -2,7 +2,6 @@
 
 #include <imgui.h>
 
-#include <format>
 #include <string>
 #include <webgpu/webgpu-raii.hpp>
 
@@ -29,6 +28,8 @@ struct ShaderBase {
     const wgpu::ShaderModuleDescriptor frag_module_desc;
 
     void release() { static_cast<Derived*>(this)->release(); }
+
+    void reset() { static_cast<Derived*>(this)->reset(); }
 
     ShaderBase(const ShaderBase<Derived>& sb) = delete;
     ShaderBase(ShaderBase<Derived>&& sb) = default;
@@ -155,6 +156,7 @@ struct Shader : public ShaderBase<Shader<K>> {
     void set_bind_groups(wgpu::RenderPassEncoder& pass_encoder) const;
 
     void release();
+    void reset();
 };
 
 
@@ -169,6 +171,9 @@ void Shader<K>::release() {
     this->frag_module->release();
     this->render_pipeline->release();
 }
+
+template <ShaderKind K>
+void Shader<K>::reset() {}
 
 template <ShaderKind K>
 void Shader<K>::display() {}

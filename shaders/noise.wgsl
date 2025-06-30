@@ -26,7 +26,7 @@ fn fullscreen_uv(coord : vec2<f32>) -> vec2<f32> {
 }
 
 fn rand(uv: vec2<f32>, t: f32) -> f32 {
-    return fract(sin(dot(uv, vec2<f32>(312.45314, -912.2434))) * 453.98894 + t);
+    return fract(sin(dot(uv, vec2<f32>(312.45314, -977.2434))) * 453.98894 + t);
 }
 
 fn rand2(uv: vec2<f32>, t: f32) -> f32 {
@@ -34,14 +34,16 @@ fn rand2(uv: vec2<f32>, t: f32) -> f32 {
 }
 
 fn gaussian_noise(r1: f32, r2: f32, mean: f32, variance: f32) -> f32 {
-    // see https://en.wikipedia.org/wiki/Box-Muller_transform
+    // from https://en.wikipedia.org/wiki/Box-Muller_transform
     let two_pi = 2.0 * PI;
 
     let mag = variance * sqrt(-2.0 * log(r1));
+    return mag * cos(two_pi * r2) + mean;
+
     // let z0  = mag * cos(two_pi * r2) + mu;
     // let z1  = mag * sin(two_pi * r2) + mu;
+    // return vec2<f32>(z0, z1);
 
-    return mag * cos(two_pi * r2) + mean;
 }
 
 @fragment fn fs_main(@builtin(position) coord : vec4<f32>) -> @location(0) vec4<f32> {

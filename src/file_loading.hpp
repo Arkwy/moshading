@@ -1,3 +1,6 @@
 #pragma once
 
-void open_file_dialog();
+
+#include "shader/manager.hpp"
+
+void open_file_dialog(ShaderManager& manager);

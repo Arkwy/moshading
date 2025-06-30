@@ -266,6 +266,12 @@ void ShaderManager::display() {
 
             ImGui::SameLine();
 
+            if (ImGui::Button("r")) {
+                std::visit([](auto& s){ s.reset(); }, *shader_desc);
+            }
+
+            ImGui::SameLine();
+
             if (ImGui::Button("x")) {
                 to_remove_idx = i;
             }
@@ -295,7 +301,7 @@ void ShaderManager::display() {
     }
 
     if (ImGui::Button("open file")) {
-        open_file_dialog();
+        open_file_dialog(*this);
     }
 
     if (to_remove_idx >= 0) {

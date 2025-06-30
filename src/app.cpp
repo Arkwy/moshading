@@ -21,8 +21,8 @@ App::App(const GPUContext& ctx) : ctx(ctx), shader_manager(ctx, shader_render_wi
     shader_manager.add_shader(Shader<ShaderKind::NoParam>("s1", fullscreen_vertex, s1));
     shader_manager.add_shader(Shader<ShaderKind::Circle>("circle", fullscreen_vertex, circle));
     shader_manager.add_shader(Shader<ShaderKind::ChromaticAbberation>("ca"));
-    shader_manager.add_shader(Shader<ShaderKind::Image>("image", "../minui/images/tarot/raw/death.jpg"));
     shader_manager.add_shader(Shader<ShaderKind::Noise>("noise"));
+    // shader_manager.add_shader(Shader<ShaderKind::Dithering>("dithering"));
 };
 
 

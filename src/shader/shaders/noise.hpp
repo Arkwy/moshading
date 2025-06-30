@@ -43,7 +43,7 @@ struct Shader<ShaderKind::Noise> : public ShaderBase<Shader<ShaderKind::Noise>> 
         };
     };
 
-    Uniforms uniforms = {{{0.0, 0.0, 0.0, 0.0, 0.05, 0.05, 0.05, 0.05, Mode::Colored}}};
+    Uniforms uniforms = {{{0.0, 0.0, 0.0, 0.0, 0.05, 0.05, 0.05, 0.05, Mode::Grey}}};
 
     wgpu::raii::BindGroupLayout bind_group_layout;
     wgpu::raii::Buffer buffer;
@@ -113,6 +113,10 @@ struct Shader<ShaderKind::Noise> : public ShaderBase<Shader<ShaderKind::Noise>> 
                 ImGui::DragFloat3("variance", uniforms.colored_variance, 0.001);
                 break;
         }
+    }
+
+    void reset() {
+        uniforms = {{{0.0, 0.0, 0.0, 0.0, 0.05, 0.05, 0.05, 0.05, Mode::Grey}}};
     }
 
     void write_buffers(wgpu::Queue& queue) const { queue.writeBuffer(*buffer, 0, &uniforms, sizeof(uniforms)); }

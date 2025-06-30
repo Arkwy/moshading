@@ -61,25 +61,27 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
     wgpu::raii::Buffer buffer;
     wgpu::raii::BindGroup bind_group;
 
+    int base_height = -1;
+    int base_width = -1;
+
     void init(const GPUContext& ctx) {
         this->init_module(ctx);
 
         // loading image
-        int height = 0, width = 0;
-        uint8_t* _image_data = stbi_load(image_path.c_str(), &width, &height, nullptr, 4);
+        uint8_t* _image_data = stbi_load(image_path.c_str(), &base_width, &base_height, nullptr, 4);
 
         if (!_image_data) {
-            throw std::runtime_error("Could not load image");
+            throw std::runtime_error("Could not load image.");
             // TODO implement better error handling
         }
         image_data = StbiPtr(_image_data);
 
-        uniforms.size_x = static_cast<float>(height);
-        uniforms.size_y = static_cast<float>(width);
+        uniforms.size_x = static_cast<float>(base_width);
+        uniforms.size_y = static_cast<float>(base_height);
 
         // create texture
         wgpu::TextureDescriptor tex_desc;
-        tex_desc.size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1};
+        tex_desc.size = {static_cast<uint32_t>(base_width), static_cast<uint32_t>(base_height), 1};
         tex_desc.format = wgpu::TextureFormat::RGBA8Unorm;
         tex_desc.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
         tex_desc.dimension = wgpu::TextureDimension::_2D;
@@ -100,16 +102,16 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
         tcti.aspect = wgpu::TextureAspect::All;
 
         wgpu::TexelCopyBufferLayout tcbl;
-        tcbl.bytesPerRow = width * 4;
-        tcbl.rowsPerImage = height;
+        tcbl.bytesPerRow = base_width * 4;
+        tcbl.rowsPerImage = base_height;
         tcbl.offset = 0;
 
         wgpu::Extent3D e3d;
-        e3d.width = width;
-        e3d.height = height;
+        e3d.width = base_width;
+        e3d.height = base_height;
         e3d.depthOrArrayLayers = 1;
 
-        queue->writeTexture(tcti, image_data.get(), height * width * 4, tcbl, e3d);
+        queue->writeTexture(tcti, image_data.get(), base_height * base_width * 4, tcbl, e3d);
 
         // create texture and sampler binding
         wgpu::TextureViewDescriptor tex_view_desc = {};
@@ -211,6 +213,12 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
     }
 
     void write_buffers(wgpu::Queue& queue) const { queue.writeBuffer(*buffer, 0, &uniforms, sizeof(uniforms)); }
+
+    void reset() {
+        uniforms = {{{0.0, 0.0, 0.0, 0.0, 0.0, 1.0}}};
+        uniforms.size_x = static_cast<float>(base_width);
+        uniforms.size_y = static_cast<float>(base_height);
+    }
 
     void set_bind_groups(wgpu::RenderPassEncoder& pass_encoder) const {
         pass_encoder.setBindGroup(1, *bind_group, 0, nullptr);

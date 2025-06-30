@@ -53,8 +53,6 @@ struct ShaderManager {
     unsigned int height;
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
 
-    unsigned int stage = ~0u;
-
     void init();
 
     void resize(unsigned int new_width, unsigned int new_height);
