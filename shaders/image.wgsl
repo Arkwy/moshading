@@ -28,10 +28,9 @@ fn rotate_2d(a : f32, vec : vec2<f32>) -> vec2<f32> {
 } 
 
 @fragment fn fs_main(@builtin(position) coord : vec4<f32>) -> @location(0) vec4<f32> {
-    var uv = coord.xy - image_uniforms.pos;
-    uv /= image_uniforms.size;
-    uv -= 0.5;
+    var uv = coord.xy - (image_uniforms.size / 2.0) - image_uniforms.pos;
     uv = rotate_2d(image_uniforms.rot, uv);
+    uv /= image_uniforms.size;
     uv += 0.5;
     var color = textureSample(input_tex, input_sampler, fullscreen_uv(coord.xy));
 
@@ -40,7 +39,5 @@ fn rotate_2d(a : f32, vec : vec2<f32>) -> vec2<f32> {
         image.a *= image_uniforms.opacity;
         color = image * image.a + color * (1.0 - image.a);
     }
-
-
     return color;
 }
