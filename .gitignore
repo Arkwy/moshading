@@ -5,3 +5,4 @@ imgui.ini
 .emscripten_cache/
 .cache/
 vgcore.*
+result

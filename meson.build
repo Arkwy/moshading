@@ -29,20 +29,15 @@ imgui_files = [
 stb_dir = 'stb'
 stb_files = [ stb_dir / 'stb_image.cpp' ]
 
-# tinyfd
-tinyfd_dir = 'tinyfiledialogs'
-tinyfd_files = [ tinyfd_dir / 'tinyfiledialogs.c' ]
-
 # Source files
 moshading_files = [
   'src/main.cpp',
   'src/gpu_context.cpp',
   'src/renderer.cpp',
   'src/app.cpp',
-  'src/file_loading.cpp',
+  'src/file_loader.cpp',
   'src/shader/manager.cpp',
   'src/shader/parameter.cpp',
-  # 'src/shader/shaders/circle.cpp',
   embed_shaders[0],
 ]
 
@@ -91,7 +86,7 @@ else
 
     executable(
         'moshading',
-        files + tinyfd_files,
+        files,
         include_directories: [
             include_directories(imgui_dir),
             include_directories(stb_dir),

@@ -3,11 +3,12 @@
 #include <imgui.h>
 
 #include <chrono>
+#include <filesystem>
 #include <memory>
 #include <webgpu/webgpu.hpp>
 
-#include "src/file_loading.hpp"
-
+#include "src/file_loader.hpp"
+#include "src/log.hpp"
 
 ShaderManager::ShaderManager(const GPUContext& ctx, unsigned int width, unsigned int height)
     : ctx(ctx), shaders(), width(width), height(height) {
@@ -123,7 +124,7 @@ void ShaderManager::init() {
     bind_group_B = ctx.get_device().createBindGroup(bg_B_desc);
 
     for (std::unique_ptr<ShaderVariant>& s : shaders) {
-        std::visit([&](auto& s){s.init_pipeline(ctx, *default_bind_group_layout);}, *s);
+        std::visit([&](auto& s) { s.init_pipeline(ctx, *default_bind_group_layout); }, *s);
     }
 }
 
@@ -137,8 +138,8 @@ void ShaderManager::resize(unsigned int new_width, unsigned int new_height) {
 
 
 void ShaderManager::add_shader(ShaderVariant&& shader) {
-    std::visit([&](auto& s){s.init(ctx);}, shader);
-    std::visit([&](auto& s){s.init_pipeline(ctx, *default_bind_group_layout);}, shader);
+    std::visit([&](auto& s) { s.init(ctx); }, shader);
+    std::visit([&](auto& s) { s.init_pipeline(ctx, *default_bind_group_layout); }, shader);
     shaders.push_back(std::make_unique<ShaderVariant>(std::move(shader)));
 }
 
@@ -197,11 +198,10 @@ void ShaderManager::render() const {
         pass_encoder->setViewport(0.0f, 0.0f, width, height, 0.0f, 1.0f);
         pass_encoder->setScissorRect(0, 0, width, height);
         pass_encoder->setBindGroup(0, default_bg, 0, nullptr);
-        std::visit([&](auto& s){s.set_bind_groups(*pass_encoder);}, *shaders[i]);
-        pass_encoder->setPipeline(std::visit([](auto& s){return s.get_render_pipeline();}, *shaders[i]));
+        std::visit([&](auto& s) { s.set_bind_groups(*pass_encoder); }, *shaders[i]);
+        pass_encoder->setPipeline(std::visit([](auto& s) { return s.get_render_pipeline(); }, *shaders[i]));
         pass_encoder->draw(3, 1, 0, 0);
         pass_encoder->end();
-
     }
 
     wgpu::raii::CommandBuffer cmd_buffer = cmd_encoder->finish();
@@ -228,7 +228,18 @@ void ShaderManager::render() const {
 
 
 void ShaderManager::display() {
-    int to_remove_idx = -1; // store shader idx user decided to remove or -1 if no remove action
+    if (file_loader.check()) {
+        std::vector<std::string> file_paths = file_loader.get_result().value();
+        if (file_paths.size()) {
+            if (file_paths.size() > 1) {
+                Log::error("More than in image file returned.");
+            }
+            add_shader(Shader<ShaderKind::Image>(std::filesystem::path(file_paths[0]).filename().stem().string(), file_paths[0]));
+        }
+    }
+
+
+    int to_remove_idx = -1;  // store shader idx user decided to remove or -1 if no remove action
     for (size_t i = 0; i < shaders.size(); i++) {
         std::unique_ptr<ShaderVariant>& shader_desc = shaders[i];
         const char* const shader_name = std::visit([](auto& s) { return s.name.c_str(); }, *shader_desc);
@@ -267,7 +278,7 @@ void ShaderManager::display() {
             ImGui::SameLine();
 
             if (ImGui::Button("r")) {
-                std::visit([](auto& s){ s.reset(); }, *shader_desc);
+                std::visit([](auto& s) { s.reset(); }, *shader_desc);
             }
 
             ImGui::SameLine();
@@ -300,8 +311,10 @@ void ShaderManager::display() {
         ImGui::PopID();
     }
 
-    if (ImGui::Button("open file")) {
-        open_file_dialog(*this);
+    if (ImGui::Button("Add image")) {
+        if (!file_loader.open_dialog<OpenType::Image>()) {
+            Log::warn("A dialog is already opened, file opening aborted.");
+        }
     }
 
     if (to_remove_idx >= 0) {

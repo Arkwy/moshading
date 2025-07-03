@@ -106,7 +106,9 @@
                   # python scripts
                   python313
                   python313Packages.python-lsp-server
-                  python313Packages.tkinter
+
+                  # linux file dialog
+                  zenity
                 ];
 
                 shellHook = ''
@@ -156,6 +158,7 @@
               xorg.libXinerama
               xorg.libXcursor
               xorg.libXi
+              zenity
             ];
 
             configurePhase = ''

@@ -7,6 +7,7 @@
 #include <webgpu/webgpu-raii.hpp>
 
 #include "src/gpu_context.hpp"
+#include "src/file_loader.hpp"
 #include "shader.hpp"
 #include "shaders/circle.hpp"
 #include "shaders/chromatic_aberration.hpp"
@@ -34,6 +35,8 @@ struct ShaderManager {
         uint32_t viewport_height;
         float time;
     };
+
+    FileLoader file_loader;
 
     wgpu::raii::BindGroupLayout default_bind_group_layout;
     wgpu::raii::Sampler sampler;
