@@ -34,22 +34,24 @@
     {
       overlays.default = final: prev: {
         wgpu-native = prev.wgpu-native.overrideAttrs (oldAttrs: {
-          postInstall = (oldAttrs.postInstall or "") + ''
-            mkdir -p $dev/lib/pkgconfig
+          postInstall =
+            (oldAttrs.postInstall or "")
+            + ''
+              mkdir -p $dev/lib/pkgconfig
 
-            cat > $dev/lib/pkgconfig/wgpu-native.pc <<EOF
-            prefix=$dev
-            exec_prefix=$prefix
-            libdir=$exec_prefix/lib
-            includedir=$prefix/include
+              cat > $dev/lib/pkgconfig/wgpu-native.pc <<EOF
+              prefix=$dev
+              exec_prefix=$prefix
+              libdir=$exec_prefix/lib
+              includedir=$prefix/include
 
-            Name: wgpu-native
-            Description: Native WebGPU implementation based on wgpu-core
-            Version: ${oldAttrs.version}
-            Libs: -L$out -lwgpu_native
-            Cflags: -I$dev/include/webgpu
-            EOF
-          '';
+              Name: wgpu-native
+              Description: Native WebGPU implementation based on wgpu-core
+              Version: ${oldAttrs.version}
+              Libs: -L$out -lwgpu_native
+              Cflags: -I$dev/include/webgpu
+              EOF
+            '';
         });
       };
 
@@ -73,13 +75,12 @@
                   pkg-config
                   cmake
 
-                  # makes lsp work
-                  bear
+                  #wasm
+                  emscripten
 
                   # rendering things
                   ## general
                   glew
-                  emscripten
                   glfw
                   wgpu-native
                   vulkan-loader
@@ -133,7 +134,8 @@
         let
           pname = "moshading";
           version = "0.1.0";
-        in {
+        in
+        {
           default = pkgs.clangStdenv.mkDerivation {
             inherit pname version;
 
@@ -162,27 +164,30 @@
             ];
 
             configurePhase = ''
-                meson setup build
+              meson setup build
             '';
-                buildPhase = ''
-                meson compile -C build
+            buildPhase = ''
+              meson compile -C build
             '';
             installPhase = ''
-  mkdir -p $out/bin
-  cp build/moshading $out/bin/moshading-raw
+              mkdir -p $out/bin
+              cp build/moshading $out/bin/moshading-raw
 
-  makeWrapper $out/bin/moshading-raw $out/bin/moshading \
-    --set LD_LIBRARY_PATH ${with pkgs; lib.makeLibraryPath [
-      vulkan-loader
-      glfw
-      wayland
-      xorg.libX11
-      xorg.libXrandr
-      xorg.libXinerama
-      xorg.libXcursor
-      xorg.libXi
-    ]}
-'';
+              makeWrapper $out/bin/moshading-raw $out/bin/moshading \
+                  --set LD_LIBRARY_PATH ${
+                    with pkgs;
+                    lib.makeLibraryPath [
+                      vulkan-loader
+                      glfw
+                      wayland
+                      xorg.libX11
+                      xorg.libXrandr
+                      xorg.libXinerama
+                      xorg.libXcursor
+                      xorg.libXi
+                    ]
+                  }
+            '';
 
             meta = {
               description = "C++ project using wgpu-native";
