@@ -18,10 +18,10 @@ ImVec2 center_base_size(const ImVec2& window_size) { return ImVec2(window_size.x
 
 
 App::App(const GPUContext& ctx) : ctx(ctx), shader_manager(ctx, shader_render_width, shader_render_height) {
-    shader_manager.add_shader(Shader<ShaderKind::NoParam>("s1", fullscreen_vertex, s1));
-    shader_manager.add_shader(Shader<ShaderKind::Circle>("circle", fullscreen_vertex, circle));
-    shader_manager.add_shader(Shader<ShaderKind::ChromaticAbberation>("ca"));
-    shader_manager.add_shader(Shader<ShaderKind::Noise>("noise"));
+    shader_manager.add_shader<Shader<ShaderKind::NoParam>>("s1", fullscreen_vertex, s1);
+    shader_manager.add_shader<Shader<ShaderKind::Circle>>("circle", fullscreen_vertex, circle);
+    shader_manager.add_shader<Shader<ShaderKind::ChromaticAbberation>>("ca");
+    shader_manager.add_shader<Shader<ShaderKind::Noise>>("noise");
     // shader_manager.add_shader(Shader<ShaderKind::Dithering>("dithering"));
 };
 

@@ -26,7 +26,15 @@ struct ShaderManager {
 
     void display();
     void render() const;
-    void add_shader(ShaderVariant&& shader);  // TODO move to private when ui is here
+
+    template <ShaderUnionConcept S, typename... Args>
+    void add_shader(Args&&... args){  // TODO move to private when ui is here
+        shaders.push_back(std::make_unique<ShaderUnion>());
+        shaders[shaders.size()-1]->set<S>(args...);
+        shaders[shaders.size()-1]->apply([&](auto& s) { s.init(ctx); });
+        shaders[shaders.size()-1]->apply([&](auto& s) { s.init_pipeline(ctx, *default_bind_group_layout); });
+    }
+
     void reorder_element(size_t index, size_t new_index);  // TODO move to private when ui is here
 
   private:
@@ -50,7 +58,7 @@ struct ShaderManager {
     wgpu::raii::TextureView texture_view_B;
     wgpu::raii::BindGroup bind_group_B;
 
-    std::vector<std::unique_ptr<ShaderVariant>> shaders;
+    std::vector<std::unique_ptr<ShaderUnion>> shaders;
 
     unsigned int width;
     unsigned int height;

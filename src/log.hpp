@@ -1,5 +1,6 @@
 #pragma once
 
+#include <format>
 #include <iostream>
 #include <ostream>
 #include <string>
@@ -52,8 +53,24 @@ inline void log(WGPULogLevel lvl, const std::string& message) {
 #endif
 
 namespace Log {
-inline void error(const std::string& message) { log(LogLevel::ERROR, message); }
-inline void warn(const std::string& message) { log(LogLevel::WARNING, message); }
-inline void info(const std::string& message) { log(LogLevel::INFO, message); }
-inline void log(const std::string& message) { log(LogLevel::LOG, message); }
+    template <typename... Args>
+    inline void error(std::string_view fmt, Args&&... args) {
+        auto formatted = std::vformat(fmt, std::make_format_args(args...));
+        log(LogLevel::ERROR, formatted);
+    }
+    template <typename... Args>
+    inline void warn(std::string_view fmt, Args&&... args) {
+        auto formatted = std::vformat(fmt, std::make_format_args(args...));
+        log(LogLevel::WARNING, formatted);
+    }
+    template <typename... Args>
+    inline void info(std::string_view fmt, Args&&... args) {
+        auto formatted = std::vformat(fmt, std::make_format_args(args...));
+        log(LogLevel::INFO, formatted);
+    }
+    template <typename... Args>
+    inline void log(std::string_view fmt, Args&&... args) {
+        auto formatted = std::vformat(fmt, std::make_format_args(args...));
+        log(LogLevel::LOG, formatted);
+    }
 }  // namespace Log

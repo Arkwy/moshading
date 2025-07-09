@@ -3,11 +3,10 @@
 #include <imgui.h>
 
 #include <string>
-#include <type_traits>
-#include <variant>
 #include <webgpu/webgpu-raii.hpp>
 
 #include "src/gpu_context.hpp"
+#include "src/tagged_union.hpp"
 #include "webgpu/webgpu.hpp"
 
 #define SHADER_VARIANTS X(NoParam), X(Circle), X(ChromaticAbberation), X(Image), X(Noise), X(Dithering)
@@ -34,7 +33,7 @@ struct ShaderBase {
     void reset() { static_cast<Derived*>(this)->reset(); }
 
     ShaderBase(const ShaderBase<Derived>& sb) = delete;
-    ShaderBase(ShaderBase<Derived>&& sb) = default;
+    ShaderBase(ShaderBase<Derived>&& sb) = delete;
 
     void display() { static_cast<Derived*>(this)->display(); }
 
@@ -206,15 +205,15 @@ void Shader<K>::set_bind_groups(wgpu::RenderPassEncoder& pass_encoder) const {}
 
 
 #define X(name) Shader<ShaderKind::name>
-using ShaderVariant = std::variant<SHADER_VARIANTS>;
+using ShaderUnion = TaggedUnion<SHADER_VARIANTS>;
 #undef X
 
 
 template <typename T, typename Variant>
-struct is_in_variant;
+struct is_in_tagged_union;
 
 template <typename T, typename... Types>
-struct is_in_variant<T, std::variant<Types...>> : std::bool_constant<(std::is_same_v<T, Types> || ...)> {};
+struct is_in_tagged_union<T, TaggedUnion<Types...>> : std::bool_constant<(std::is_same_v<T, Types> || ...)> {};
 
 template <typename T>
-concept ShaderVariantConcept = is_in_variant<T, ShaderVariant>::value;
+concept ShaderUnionConcept = is_in_tagged_union<T, ShaderUnion>::value;
