@@ -3,10 +3,10 @@
 #include <imgui.h>
 
 #include <webgpu/webgpu-raii.hpp>
+#include <webgpu/webgpu.hpp>
 
 #include "shaders_code.hpp"
 #include "src/shader/shader.hpp"
-#include "webgpu/webgpu.hpp"
 
 
 template <>
@@ -121,9 +121,7 @@ struct Shader<ShaderKind::ChromaticAbberation> : public ShaderBase<Shader<Shader
         }
     }
 
-    void reset() {
-        uniforms = {{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, Mode::Uniform}}};
-    }
+    void reset() { uniforms = {{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, Mode::Uniform}}}; }
 
     void write_buffers(wgpu::Queue& queue) const { queue.writeBuffer(*buffer, 0, &uniforms, sizeof(uniforms)); }
 

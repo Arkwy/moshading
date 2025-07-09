@@ -1,5 +1,5 @@
 {
-  description = "A Nix-flake-based C/C++ development environment for wgpu-native applications";
+  description = "Dev env + nix build recipe for Moshading";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
@@ -66,14 +66,13 @@
               }
               rec {
                 packages = with pkgs; [
-                  # c/c++
+                  # c/c++ and build tools
                   clang-tools
                   gdb
                   valgrind
                   meson
                   ninja
                   pkg-config
-                  cmake
 
                   #wasm
                   emscripten
@@ -190,7 +189,7 @@
             '';
 
             meta = {
-              description = "C++ project using wgpu-native";
+              description = "A cross plateform shader based image/video compositor.";
               license = pkgs.lib.licenses.mit;
               platforms = pkgs.lib.platforms.unix;
             };

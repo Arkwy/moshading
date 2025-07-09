@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <webgpu/webgpu-raii.hpp>
 
+#include "imgui_internal.h"
 #include "webgpu/webgpu.hpp"
 
 #include <stb/stb_image.h>
@@ -206,10 +207,42 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
 
 
     void display() {
-        ImGui::DragFloat2("position", uniforms.pos, 1);
-        ImGui::DragFloat2("size", uniforms.size, 1);
+        ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.35);
+        ImGui::DragFloat("##pos_x", &uniforms.pos_x, 1, 0, 0, "x: %.3f");
+        ImGui::SameLine();
+        ImGui::DragFloat("##pos_y", &uniforms.pos_y, 1, 0, 0, "y: %.3f");
+        ImGui::DragFloat("##size_x", &uniforms.size_x, 1, 0, 0, "x: %.3f");
+        ImGui::SameLine();
+        ImGui::DragFloat("##size_y", &uniforms.size_y, 1, 0, 0, "y: %.3f");
+        ImGui::PopItemWidth();
         ImGui::DragFloat("rotation", &uniforms.rot, 0.01);
         ImGui::SliderFloat("opacity", &uniforms.opacity, 0, 1);
+
+        ImVec2 pad_size = ImVec2(200, 200);
+        ImVec2 pad_min = ImGui::GetCursorScreenPos();
+        ImVec2 pad_max = ImVec2(pad_min.x + pad_size.x, pad_min.y + pad_size.y);
+
+        // Draw the background
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRectFilled(pad_min, pad_max, IM_COL32(50, 50, 50, 255));
+        draw_list->AddRect(pad_min, pad_max, IM_COL32(255, 255, 255, 255));
+
+        // Normalize and draw the handle
+        ImVec2& pos = *reinterpret_cast<ImVec2*>(uniforms.pos);
+        ImVec2 handle_pos = ImVec2(pad_min.x + pos.x, pad_min.y + pos.y);
+        handle_pos = ImClamp(handle_pos, pad_min, pad_max);
+
+        draw_list->AddCircleFilled(handle_pos, 5.0f, IM_COL32(255, 0, 0, 255));
+
+        // Dragging logic
+        ImGui::InvisibleButton("pad", pad_size);
+        bool is_active = ImGui::IsItemActive();
+
+        if (is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+            ImVec2 delta = ImGui::GetIO().MouseDelta;
+            pos.x += delta.x;
+            pos.y += delta.y;
+        }
     }
 
     void write_buffers(wgpu::Queue& queue) const { queue.writeBuffer(*buffer, 0, &uniforms, sizeof(uniforms)); }

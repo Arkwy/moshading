@@ -13,7 +13,7 @@ bool FileLoader::check() {
 
 std::optional<std::vector<std::string>> FileLoader::get_result() {
     if (check()) {
-        result = handle.value().result();
+        std::vector<std::string> result = handle.value().result();
         handle = std::nullopt;
         return result;
     }

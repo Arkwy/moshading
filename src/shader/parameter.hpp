@@ -1,5 +1,9 @@
 #pragma once
 
+#include <imgui.h>
+#include <imgui_internal.h>
+
+#include <format>
 #include <iostream>
 #include <optional>
 #include <string>
@@ -7,13 +11,14 @@
 #include <type_traits>
 #include <utility>
 
-#include <imgui.h>
+#include "src/log.hpp"
 
 namespace UserParam {
 
 enum class WidgetKind {
     Slider,
     Field,
+    DragField,
     Checkbox,
     Dropdown,
 };
@@ -21,7 +26,8 @@ enum class WidgetKind {
 
 template <typename T>
 concept Widget = requires(T t) {
-    { t.display() } -> std::same_as<void>;
+    { t.display() } -> std::same_as<bool>;
+    t.state;
 };
 
 
@@ -33,9 +39,12 @@ struct WidgetGroup {
 
     WidgetGroup(Ws&... widgets) : widgets(widgets...) {}
 
-    void display() {
-        std::apply([](auto&... widget) { (widget.display(), ...); }, widgets);
+    bool display() {
+        std::apply([](auto&... widget) { return (widget.display() && ...); }, widgets);
     }
+
+
+
 };  // WidgetGroup is itself a widget
 
 
@@ -45,18 +54,81 @@ concept WidgetGroupType =
 
 
 
-template <WidgetKind W>
+template <size_t N, WidgetKind W>
+    requires(W == WidgetKind::Slider || W == WidgetKind::Field || W == WidgetKind::DragField)
 struct Float {
     const std::string name;
-    const float min;
-    const float max;
+    const std::optional<std::array<std::string, N>> field_names;
+    const std::array<float, N> min;
+    const std::array<float, N> max;
 
-    float state;
+    std::array<float, N> state;
 
-    Float(const std::string& name, const float& min, const float& max, const float& initial_value)
-        : name(name), min(min), max(max), state(initial_value) {}
+    Float(
+        const std::string& name,
+        const std::array<float, N>& min,
+        const std::array<float, N>& max,
+        const std::array<float, N>& state,
+        const std::optional<std::array<std::string, N>>& field_names = std::nullopt
+    )
+        : name(name), field_names(field_names), min(min), max(max), state(state) {}
 
-    void display();
+    Float(Float<N, W>& other) = delete;
+    Float(Float<N, W>&& other)
+        : name(std::move(other.name)),
+          field_names(std::move(other.field_names)),
+          min(std::move(other.min)),
+          max(std::move(other.max)),
+          state(std::move(other.state)) {
+        Log::warn(std::format("copy -> {}", static_cast<const void*>(state.data())));
+    }
+
+    bool display() {
+        if constexpr (W == WidgetKind::Slider) {
+            return ImGui::SliderScalarN(
+                name.c_str(),
+                ImGuiDataType_Float,
+                state,
+                N,
+                &min,
+                &max,
+                "%.3f",
+                ImGuiSliderFlags_None
+            );
+        } else if constexpr (W == WidgetKind::DragField) {
+            ImGuiWindow* window = ImGui::GetCurrentWindow();
+            if (window->SkipItems) return false;
+
+            ImGuiContext& g = *GImGui;
+            bool value_changed = false;
+            ImGui::BeginGroup();
+            ImGui::PushID(name.c_str());
+            ImGui::PushMultiItemsWidths(N, ImGui::CalcItemWidth());
+            for (int i = 0; i < N; i++) {
+                ImGui::PushID(field_names.has_value() ? field_names.value()[i].c_str() : std::to_string(i).c_str());
+                if (i > 0) ImGui::SameLine(0, g.Style.ItemInnerSpacing.x);
+                value_changed |= ImGui::DragScalar(
+                    "",
+                    ImGuiDataType_Float,
+                    state.data() + i,
+                    (max[i] - min[i]) / 100.0,
+                    min.data() + i,
+                    max.data() + i,
+                    field_names.has_value() ? std::format("{}: %.3f", field_names.value()[i]).c_str() : "%.3f",
+                    0
+                );
+                ImGui::PopID();
+                ImGui::PopItemWidth();
+            }
+            ImGui::PopID();
+
+            ImGui::SameLine(0, g.Style.ItemInnerSpacing.x);
+            ImGui::Text("%s", name.c_str());
+
+            ImGui::EndGroup();
+            return value_changed;
+        }
+    }
 };
 
 
@@ -69,8 +141,8 @@ struct Integer {
 
     int state;
 
-    Integer(const std::string& name, const int& min, const int& max, const int& initial_value)
-        : name(name), min(min), max(max), state(initial_value) {}
+    Integer(const std::string& name, const int& min, const int& max, int const state)
+        : name(name), min(min), max(max), state(state) {}
 
     Integer(const Integer<W>& other) { std::cout << "copy !!! ò_ó" << std::endl; }
 
@@ -111,7 +183,7 @@ struct Feature {
 
     Feature(const std::string& name, const bool& initial_state)
         requires std::is_same_v<Childs, void>
-    : name(name), childs(std::monostate{}), state(initial_state) {}
+        : name(name), childs(std::monostate{}), state(initial_state) {}
 
     Feature(const std::string& name, const bool& initial_state, const optional_ref<Childs>& childs)
         requires(!std::is_same_v<Childs, void>)
@@ -177,4 +249,4 @@ void window(W& params) {
     params.display();
 }
 
-}  // namespace ShaderParam
+}  // namespace UserParam

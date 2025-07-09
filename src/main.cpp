@@ -21,6 +21,8 @@
 #include "gpu_context.hpp"
 
 int main() {
+
+
     GPUContext ctx;
     if (!ctx.init()) {
         return 1;
@@ -31,6 +33,9 @@ int main() {
     if (!renderer.init()) {
         return 1;
     }
+
+    renderer.set_style();
+
     
 #ifdef __EMSCRIPTEN__
     emscripten_set_main_loop_arg([](void* renderer)->void{static_cast<Renderer*>(renderer)->main_loop();}, &renderer, 0, true);

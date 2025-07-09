@@ -1,5 +1,6 @@
 #include "manager.hpp"
 
+#include <IconsFontAwesome6.h>
 #include <imgui.h>
 
 #include <chrono>
@@ -234,7 +235,10 @@ void ShaderManager::display() {
             if (file_paths.size() > 1) {
                 Log::error("More than in image file returned.");
             }
-            add_shader(Shader<ShaderKind::Image>(std::filesystem::path(file_paths[0]).filename().stem().string(), file_paths[0]));
+            add_shader(Shader<ShaderKind::Image>(
+                std::filesystem::path(file_paths[0]).filename().stem().string(),
+                file_paths[0]
+            ));
         }
     }
 
@@ -251,23 +255,23 @@ void ShaderManager::display() {
         ImGuiChildFlags child_flags = ImGuiChildFlags_Border | ImGuiChildFlags_AutoResizeY;
         ImGui::BeginChild(shader_name, ImVec2(-1, 0), child_flags, ImGuiWindowFlags_MenuBar);
 
+        ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.7);
 
         // Menu bar
         if (ImGui::BeginMenuBar()) {
             ImGui::Text("%s", shader_name);
 
             // Push all the way to the right
-            float icon_width = ImGui::CalcTextSize("--").x + ImGui::CalcTextSize("x").x;  // if using icon font
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 
-            ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 3 * icon_width);
+            ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 90);
 
 
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));                     // Transparent when idle
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0)); // Transparent when idle
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.5f, 0.5f, 0.5f, 0.5f));  // Gray when hovered
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.5f, 0.5f, 0.5f));  // Same as hovered (optional)
 
-            ImGui::Button("--");
+            ImGui::Button(ICON_FA_GRIP);
 
             if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
                 ImGui::SetDragDropPayload("DND_SHADER_CELL", &i, sizeof(size_t));
@@ -277,13 +281,13 @@ void ShaderManager::display() {
 
             ImGui::SameLine();
 
-            if (ImGui::Button("r")) {
+            if (ImGui::Button(ICON_FA_ROTATE_LEFT)) {
                 std::visit([](auto& s) { s.reset(); }, *shader_desc);
             }
 
             ImGui::SameLine();
 
-            if (ImGui::Button("x")) {
+            if (ImGui::Button(ICON_FA_XMARK)) {
                 to_remove_idx = i;
             }
 
@@ -294,7 +298,7 @@ void ShaderManager::display() {
         }
 
         std::visit([](auto& s) { return s.display(); }, *shader_desc);
-
+        ImGui::PopItemWidth();
         ImGui::EndChild();
 
         ImGui::PopStyleVar(1);

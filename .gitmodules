@@ -4,3 +4,9 @@
 [submodule "portable-file-dialogs"]
 	path = portable-file-dialogs
 	url = https://github.com/samhocevar/portable-file-dialogs.git
+[submodule "IconFontCppHeaders"]
+	path = IconFontCppHeaders
+	url = https://github.com/juliettef/IconFontCppHeaders.git
+[submodule "Font-Awesome"]
+	path = Font-Awesome
+	url = https://github.com/FortAwesome/Font-Awesome.git

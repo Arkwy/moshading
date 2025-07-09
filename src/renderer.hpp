@@ -20,9 +20,10 @@ struct Renderer {
 
     // Base display
     bool init();
-    void terminate();
+    void set_style();
     void main_loop();
     bool is_running();
-
     void display_app();
+    void terminate();
+
 };

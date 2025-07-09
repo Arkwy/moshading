@@ -1,12 +1,10 @@
 #pragma once
 
-#include <portable-file-dialogs/portable-file-dialogs.h>
+#include <portable-file-dialogs.h>
 
 #include <optional>
 #include <string>
 #include <vector>
-
-#include "log.hpp"
 
 enum class OpenType {
     Image,
@@ -21,18 +19,19 @@ struct FileLoader {
     bool open_dialog();
 
   private:
-    std::vector<std::string> result = std::vector<std::string>(0);
     std::optional<pfd::open_file> handle = std::nullopt;
 };
 
 template <OpenType OT>
 bool FileLoader::open_dialog() {
     if (handle.has_value()) return false;
+
     if constexpr (OT == OpenType::Image) {
-        Log::log("opening image");
-        handle = pfd::open_file("Select an Image File", ".", {"Image Files", "*.png *.jpg *.jpeg *.bmp"}, pfd::opt::none);
+        handle =
+            pfd::open_file("Select an Image File", ".", {"Image Files", "*.png *.jpg *.jpeg *.bmp"}, pfd::opt::none);
     } else if constexpr (OT == OpenType::Video) {
         static_assert(false, "Not implemented yet.");
     }
+
     return true;
 }
