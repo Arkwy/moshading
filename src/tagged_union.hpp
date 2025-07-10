@@ -1,12 +1,9 @@
 #include <algorithm>
 #include <cstddef>
 #include <optional>
-#include <stdexcept>
 #include <type_traits>
 #include <utility>
 #include <variant>
-
-#include "src/log.hpp"
 
 
 template <typename Target, typename VariadicHead, typename... VariadicTail>
@@ -90,13 +87,12 @@ struct TaggedUnion {
             "All types of this union does not return the same type for the applied function."
         );
 
-
         if constexpr (!std::is_void_v<ReturnType>) {
             bool matched = false;
             std::optional<ReturnType> result = std::nullopt;
             (try_apply<Func, ReturnType, Is>(func, matched, result), ...);
             assert(result.has_value());
-            ReturnType realsult = result.value();
+            ReturnType realsult = std::move(result.value());
             return realsult;
         } else {
             bool matched = false;

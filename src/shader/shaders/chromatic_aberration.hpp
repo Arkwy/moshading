@@ -7,12 +7,11 @@
 
 #include "shaders_code.hpp"
 #include "src/shader/shader.hpp"
+#include "src/shader/parameter.hpp"
 
 
 template <>
 struct Shader<ShaderKind::ChromaticAbberation> : public ShaderBase<Shader<ShaderKind::ChromaticAbberation>> {
-    Shader(const std::string& name)
-        : ShaderBase<Shader<ShaderKind::ChromaticAbberation>>(name, fullscreen_vertex, chromatic_aberration) {}
 
     enum class Mode : int {
         Uniform,
@@ -49,10 +48,18 @@ struct Shader<ShaderKind::ChromaticAbberation> : public ShaderBase<Shader<Shader
     };
 
     Uniforms uniforms = {{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, Mode::Uniform}}};
+    UserParam::Float<2, UserParam::WidgetKind::DragField> test_param;
 
     wgpu::raii::BindGroupLayout bind_group_layout;
     wgpu::raii::Buffer buffer;
     wgpu::raii::BindGroup bind_group;
+
+
+    Shader(const std::string& name)
+        : ShaderBase<Shader<ShaderKind::ChromaticAbberation>>(name, fullscreen_vertex, chromatic_aberration),
+          test_param("test", {0.0, 0.0}, {0.0, 0.0}, std::span<float, 2>(uniforms.uni_red_shift, 2), std::optional<std::array<std::string, 2>>({"x", "y"}))
+
+    {}
 
     void init(const GPUContext& ctx) {
         this->init_module(ctx);
@@ -110,7 +117,8 @@ struct Shader<ShaderKind::ChromaticAbberation> : public ShaderBase<Shader<Shader
         ImGui::Combo("Mode", &uniforms.mode_id, modes, 3);
         switch (uniforms.mode) {
             case Mode::Uniform:
-                ImGui::DragFloat2("red", uniforms.uni_red_shift, 0.001);
+                test_param.display();
+                // ImGui::DragFloat2("red", uniforms.uni_red_shift, 0.001);
                 ImGui::DragFloat2("green", uniforms.uni_green_shift, 0.001);
                 ImGui::DragFloat2("blue", uniforms.uni_blue_shift, 0.001);
                 break;

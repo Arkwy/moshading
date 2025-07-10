@@ -100,6 +100,10 @@ struct ShaderBase {
     const wgpu::RenderPipeline get_render_pipeline() const { return *render_pipeline; }
 
   protected:
+    wgpu::raii::ShaderModule vertex_module;
+    wgpu::raii::ShaderModule frag_module;
+    wgpu::raii::RenderPipeline render_pipeline;
+
     ShaderBase(const std::string& name, const char* const vertex_code, const char* const frag_code)
         : name(name),
           vertex_code(vertex_code),
@@ -108,10 +112,6 @@ struct ShaderBase {
           frag_source(make_source(frag_code)),
           vertex_module_desc(make_module_desc(vertex_source)),
           frag_module_desc(make_module_desc(frag_source)) {}
-
-    wgpu::raii::ShaderModule vertex_module;
-    wgpu::raii::ShaderModule frag_module;
-    wgpu::raii::RenderPipeline render_pipeline;
 
     static const wgpu::ShaderSourceWGSL make_source(const char* const code) {
         wgpu::ShaderSourceWGSL source;

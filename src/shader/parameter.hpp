@@ -62,13 +62,13 @@ struct Float {
     const std::array<float, N> min;
     const std::array<float, N> max;
 
-    std::array<float, N> state;
+    std::span<float, N> state;
 
     Float(
         const std::string& name,
         const std::array<float, N>& min,
         const std::array<float, N>& max,
-        const std::array<float, N>& state,
+        const std::span<float, N>& state,
         const std::optional<std::array<std::string, N>>& field_names = std::nullopt
     )
         : name(name), field_names(field_names), min(min), max(max), state(state) {}
@@ -111,7 +111,7 @@ struct Float {
                     "",
                     ImGuiDataType_Float,
                     state.data() + i,
-                    (max[i] - min[i]) / 100.0,
+                    max[i] == min[i] ? 0.1 : (max[i] - min[i]) / 100.0,
                     min.data() + i,
                     max.data() + i,
                     field_names.has_value() ? std::format("{}: %.3f", field_names.value()[i]).c_str() : "%.3f",

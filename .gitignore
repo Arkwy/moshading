@@ -6,3 +6,4 @@ imgui.ini
 .cache/
 vgcore.*
 result
+.gdb_history
