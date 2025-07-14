@@ -5,10 +5,10 @@
     #include <emscripten/html5_webgpu.h>
 #endif
 
-#include "gpu_context.hpp"
+#include "context.hpp"
 #include "log.hpp"
 
-bool GPUContext::init() {
+bool Context::init() {
     if (initialized) {
         Log::warn("GPU context already initialized");
         return false;
@@ -43,7 +43,7 @@ bool GPUContext::init() {
 }
 
 
-const wgpu::Instance& GPUContext::get_instance() const {
+const wgpu::Instance& Context::get_instance() const {
     if (!initialized) {
         Log::error("GPU context not be initialized.");
         throw std::runtime_error("GPU context not be initialized.");
@@ -53,7 +53,7 @@ const wgpu::Instance& GPUContext::get_instance() const {
 
 
 #ifndef __EMSCRIPTEN__
-const wgpu::Adapter& GPUContext::get_adapter() const {
+const wgpu::Adapter& Context::get_adapter() const {
     if (!initialized) {
         Log::error("GPU context not be initialized.");
         throw std::runtime_error("GPU context not be initialized.");
@@ -63,7 +63,7 @@ const wgpu::Adapter& GPUContext::get_adapter() const {
 #endif
 
 
-const wgpu::Device& GPUContext::get_device() const {
+const wgpu::Device& Context::get_device() const {
     if (!initialized) {
         Log::error("GPU context not be initialized.");
         throw std::runtime_error("GPU context not be initialized.");

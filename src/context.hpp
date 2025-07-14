@@ -2,7 +2,9 @@
 
 #include <webgpu/webgpu-raii.hpp>
 
-struct GPUContext {
+struct Context {
+    std::array<unsigned int, 2> render_dim = {1920, 1080}; 
+
     const wgpu::Instance& get_instance() const;
 #ifndef __EMSCRIPEN__
     const wgpu::Adapter& get_adapter() const;
@@ -19,4 +21,5 @@ struct GPUContext {
     wgpu::raii::Adapter adapter;
 #endif
     wgpu::raii::Device device;
+
 };

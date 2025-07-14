@@ -6,7 +6,7 @@
 
 #include <webgpu/webgpu-raii.hpp>
 
-#include "src/gpu_context.hpp"
+#include "src/context.hpp"
 #include "src/file_loader.hpp"
 #include "shader.hpp"
 #include "shaders/circle.hpp"
@@ -17,9 +17,9 @@
 
 
 struct ShaderManager {
-    const GPUContext& ctx;
+    Context& ctx;
 
-    ShaderManager(const GPUContext& ctx, unsigned int width, unsigned int height);
+    ShaderManager(Context& ctx);
 
     ShaderManager(const ShaderManager&) = delete;
     ShaderManager(ShaderManager&&) = delete;
@@ -30,9 +30,10 @@ struct ShaderManager {
     template <ShaderUnionConcept S, typename... Args>
     void add_shader(Args&&... args){  // TODO move to private when ui is here
         shaders.push_back(std::make_unique<ShaderUnion>());
-        shaders[shaders.size()-1]->set<S>(args...);
-        shaders[shaders.size()-1]->apply([&](auto& s) { s.init(ctx); });
-        shaders[shaders.size()-1]->apply([&](auto& s) { s.init_pipeline(ctx, *default_bind_group_layout); });
+        auto& shader = shaders[shaders.size()-1];
+        shader->set<S>(args...);
+        shader->apply([&](auto& s) { s.init(ctx); });
+        shader->apply([&](auto& s) { s.init_pipeline(ctx, *default_bind_group_layout); });
     }
 
     void reorder_element(size_t index, size_t new_index);  // TODO move to private when ui is here
@@ -43,6 +44,15 @@ struct ShaderManager {
         uint32_t viewport_height;
         float time;
     };
+
+
+    struct DisplayState {
+        float zoom;
+        float offset_x;
+        float offset_y;
+    };
+
+    mutable DisplayState display_state {1.0, 0.0, 0.0};
 
     FileLoader file_loader;
 
@@ -60,8 +70,6 @@ struct ShaderManager {
 
     std::vector<std::unique_ptr<ShaderUnion>> shaders;
 
-    unsigned int width;
-    unsigned int height;
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
 
     void init();

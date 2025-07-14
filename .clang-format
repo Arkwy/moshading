@@ -11,3 +11,4 @@ AllowAllArgumentsOnNextLine: false
 AlwaysBreakTemplateDeclarations: true
 MaxEmptyLinesToKeep: 3
 IndentPPDirectives: BeforeHash
+AllowShortFunctionsOnASingleLine: Empty

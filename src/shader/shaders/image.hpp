@@ -1,19 +1,19 @@
 #pragma once
 
 #include <imgui.h>
+#include <stb/stb_image.h>
 
 #include <cmath>
 #include <cstdint>
 #include <stdexcept>
+#include <tuple>
 #include <webgpu/webgpu-raii.hpp>
 
 #include "imgui_internal.h"
-#include "webgpu/webgpu.hpp"
-
-#include <stb/stb_image.h>
-
 #include "shaders_code.hpp"
+#include "src/shader/parameter.hpp"
 #include "src/shader/shader.hpp"
+#include "webgpu/webgpu.hpp"
 
 
 template <>
@@ -28,10 +28,6 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
     using StbiPtr = std::unique_ptr<uint8_t, StbiDeleter>;
     StbiPtr image_data;
 
-    Shader(const std::string& name, const std::string& image_path)
-        : ShaderBase<Shader<ShaderKind::Image>>(name, fullscreen_vertex, image), image_path(image_path) {}
-
-
     struct alignas(16) Uniforms {
         union {
             struct {
@@ -39,14 +35,14 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
                 float size_y;
                 float pos_x;
                 float pos_y;
-                float rot;
+                float rotation;
                 float opacity;
             };
             struct {
                 float size[2];
                 float pos[2];
-                float rotation;
-                float transparency;
+                float _;
+                float _;
             };
             float raw[6];
         };
@@ -65,8 +61,52 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
     int base_height = -1;
     int base_width = -1;
 
-    void init(const GPUContext& ctx) {
+    std::array<unsigned int, 2> render_dim = {0, 0};
+
+    void set_render_dim(const std::array<unsigned int, 2>& dim) {
+        render_dim = dim;
+        std::get<2>(parameters.widgets).max = {static_cast<float>(render_dim[0]), static_cast<float>(render_dim[1])};
+    }
+
+    template <size_t N>
+    using FField = Float<N, WidgetKind::DragField>;
+    template <size_t N>
+    using FieldNames = std::optional<std::array<std::string, N>>;
+    using Parameters = WidgetGroup<FField<2>, FField<2>, Box2D, FField<1>, FField<1>>;
+
+    Parameters parameters;
+
+    Shader(const std::string& name, const std::string& image_path)
+        : ShaderBase<Shader<ShaderKind::Image>>(name, fullscreen_vertex, image),
+          image_path(image_path),
+          parameters(init_parameters(uniforms, render_dim)) {}
+
+
+    static Parameters init_parameters(Uniforms& uniforms, const std::array<unsigned int, 2>& render_dim) {
+        return Parameters(
+            FField<2>("size", {1, 1}, {0, 0}, {0, 0}, std::span<float, 2>(uniforms.size, 2), FieldNames<2>({"x", "y"})),
+            FField<
+                2>("position", {1, 1}, {0, 0}, {0, 0}, std::span<float, 2>(uniforms.pos, 2), FieldNames<2>({"x", "y"})),
+            Box2D(
+                "##position",
+                {0, 0},
+                {static_cast<float>(render_dim[0]), static_cast<float>(render_dim[1])},
+                true,
+                uniforms.pos,
+                uniforms.size,
+                uniforms.rotation
+            ),
+            FField<1>("rotation", {0.01}, {0}, {0}, std::span<float, 1>(&uniforms.rotation, 1)),
+            FField<1>("opacity", {0.01}, {0}, {1}, std::span<float, 1>(&uniforms.opacity, 1))
+        );
+    }
+
+
+    void init(const Context& ctx) {
         this->init_module(ctx);
+
+        set_render_dim(ctx.render_dim);
+        std::get<2>(parameters.widgets).max = {static_cast<float>(render_dim[0]), static_cast<float>(render_dim[1])};
 
         // loading image
         uint8_t* _image_data = stbi_load(image_path.c_str(), &base_width, &base_height, nullptr, 4);
@@ -191,7 +231,7 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
     }
 
     wgpu::raii::PipelineLayout make_pipeline_layout(
-        const GPUContext& ctx, const wgpu::BindGroupLayout& default_bind_group_layout
+        const Context& ctx, const wgpu::BindGroupLayout& default_bind_group_layout
     ) {
         wgpu::raii::PipelineLayout pipeline_layout;
 
@@ -207,45 +247,12 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
 
 
     void display() {
-        ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.35);
-        ImGui::DragFloat("##pos_x", &uniforms.pos_x, 1, 0, 0, "x: %.3f");
-        ImGui::SameLine();
-        ImGui::DragFloat("##pos_y", &uniforms.pos_y, 1, 0, 0, "y: %.3f");
-        ImGui::DragFloat("##size_x", &uniforms.size_x, 1, 0, 0, "x: %.3f");
-        ImGui::SameLine();
-        ImGui::DragFloat("##size_y", &uniforms.size_y, 1, 0, 0, "y: %.3f");
-        ImGui::PopItemWidth();
-        ImGui::DragFloat("rotation", &uniforms.rot, 0.01);
-        ImGui::SliderFloat("opacity", &uniforms.opacity, 0, 1);
-
-        ImVec2 pad_size = ImVec2(200, 200);
-        ImVec2 pad_min = ImGui::GetCursorScreenPos();
-        ImVec2 pad_max = ImVec2(pad_min.x + pad_size.x, pad_min.y + pad_size.y);
-
-        // Draw the background
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddRectFilled(pad_min, pad_max, IM_COL32(50, 50, 50, 255));
-        draw_list->AddRect(pad_min, pad_max, IM_COL32(255, 255, 255, 255));
-
-        // Normalize and draw the handle
-        ImVec2& pos = *reinterpret_cast<ImVec2*>(uniforms.pos);
-        ImVec2 handle_pos = ImVec2(pad_min.x + pos.x, pad_min.y + pos.y);
-        handle_pos = ImClamp(handle_pos, pad_min, pad_max);
-
-        draw_list->AddCircleFilled(handle_pos, 5.0f, IM_COL32(255, 0, 0, 255));
-
-        // Dragging logic
-        ImGui::InvisibleButton("pad", pad_size);
-        bool is_active = ImGui::IsItemActive();
-
-        if (is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-            ImVec2 delta = ImGui::GetIO().MouseDelta;
-            pos.x += delta.x;
-            pos.y += delta.y;
-        }
+        parameters.display();
     }
 
-    void write_buffers(wgpu::Queue& queue) const { queue.writeBuffer(*buffer, 0, &uniforms, sizeof(uniforms)); }
+    void write_buffers(wgpu::Queue& queue) const {
+        queue.writeBuffer(*buffer, 0, &uniforms, sizeof(uniforms));
+    }
 
     void reset() {
         uniforms = {{{0.0, 0.0, 0.0, 0.0, 0.0, 1.0}}};

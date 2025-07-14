@@ -4,10 +4,10 @@
 #include <webgpu/webgpu-raii.hpp>
 
 #include "app.hpp"
-#include "gpu_context.hpp"
+#include "context.hpp"
 
 struct Renderer {
-    const GPUContext& ctx;
+    Context& ctx;
     GLFWwindow *window;
     wgpu::raii::Surface surface;
 
@@ -16,7 +16,7 @@ struct Renderer {
 
     App app;
 
-    Renderer(const GPUContext& ctx) : ctx(ctx), app(ctx) {};
+    Renderer(Context& ctx) : ctx(ctx), app(ctx) {};
 
     // Base display
     bool init();

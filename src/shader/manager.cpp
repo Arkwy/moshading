@@ -10,9 +10,9 @@
 
 #include "src/file_loader.hpp"
 #include "src/log.hpp"
+#include "src/shader/shader.hpp"
 
-ShaderManager::ShaderManager(const GPUContext& ctx, unsigned int width, unsigned int height)
-    : ctx(ctx), shaders(), width(width), height(height) {
+ShaderManager::ShaderManager(Context& ctx) : ctx(ctx), shaders() {
     init();
 }
 
@@ -29,8 +29,8 @@ void ShaderManager::init() {
     texture_desc.label.data = "shader_render";
     texture_desc.label.length = WGPU_STRLEN;
 #endif
-    texture_desc.size.width = width;
-    texture_desc.size.height = height;
+    texture_desc.size.width = ctx.render_dim[0];
+    texture_desc.size.height = ctx.render_dim[1];
     texture_desc.size.depthOrArrayLayers = 1;
     texture_desc.format = wgpu::TextureFormat::RGBA8Unorm;
     texture_desc.sampleCount = 1;
@@ -126,14 +126,15 @@ void ShaderManager::init() {
 
     for (std::unique_ptr<ShaderUnion>& s : shaders) {
         s->apply([&](auto& s) { s.init_pipeline(ctx, *default_bind_group_layout); });
+        if (s->is_current<Shader<ShaderKind::Image>>()) {
+            s->get<Shader<ShaderKind::Image>>().set_render_dim(ctx.render_dim);
+        }
     }
 }
 
 
 void ShaderManager::resize(unsigned int new_width, unsigned int new_height) {
-    width = new_width;
-    height = new_height;
-
+    ctx.render_dim = std::array<unsigned int, 2>({new_width, new_height});
     init();
 }
 
@@ -148,9 +149,11 @@ void ShaderManager::reorder_element(size_t index, size_t new_index) {
 
 
 void ShaderManager::render() const {
+    unsigned int& width = ctx.render_dim[0];
+    unsigned int& height = ctx.render_dim[1];
+
     assert(*texture_view_A && *texture_view_B);
-    assert(shaders.size() > 0);
-    wgpu::TextureView tv;
+    wgpu::TextureView tv = *texture_view_A;
     DefaultUniforms du = {
         width,
         height,
@@ -201,10 +204,36 @@ void ShaderManager::render() const {
     wgpu::raii::CommandBuffer cmd_buffer = cmd_encoder->finish();
     queue->submit(1, &(*cmd_buffer));
 
-    // compute display position and dim
+    // display rendered texture
     ImVec2 display_region = ImGui::GetContentRegionAvail();
-    ImVec2 tex_to_display_ratio(display_region.x / width, display_region.y / height);
+    float start_x = ImGui::GetCursorPosX();
+    float start_y = ImGui::GetCursorPosY();
+
+    ImGui::InvisibleButton("##render region", display_region, ImGuiButtonFlags_MouseButtonLeft);
+
+    if (ImGui::IsItemHovered()) {
+        ImGuiIO& io = ImGui::GetIO();
+
+        // Zoom with mouse wheel
+        float zoom_delta = io.MouseWheel * 0.1f;
+        if (zoom_delta != 0.0f) {
+            display_state.zoom = std::clamp(display_state.zoom + zoom_delta, 0.1f, 100.0f);
+        }
+
+        // Pan with left-click drag
+        if (ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+            display_state.offset_x += io.MouseDelta.x / display_state.zoom;
+            display_state.offset_y += io.MouseDelta.y / display_state.zoom;
+        }
+    }
+
+
     ImVec2 display_dim;
+    ImVec2 tex_to_display_ratio(
+        (display_region.x / width) * display_state.zoom,
+        (display_region.y / height) * display_state.zoom
+    );
+
     if (tex_to_display_ratio.x < tex_to_display_ratio.y) {
         display_dim.x = tex_to_display_ratio.x * width;
         display_dim.y = tex_to_display_ratio.x * height;
@@ -212,10 +241,12 @@ void ShaderManager::render() const {
         display_dim.x = tex_to_display_ratio.y * width;
         display_dim.y = tex_to_display_ratio.y * height;
     }
+
     ImGui::SetCursorPos(ImVec2(
-        -(display_dim.x - display_region.x) * 0.5 + ImGui::GetCursorPosX(),
-        -(display_dim.y - display_region.y) * 0.5 + ImGui::GetCursorPosY()
+        -(display_dim.x - display_region.x) * 0.5 + start_x + display_state.offset_x * display_state.zoom,
+        -(display_dim.y - display_region.y) * 0.5 + start_y + display_state.offset_y * display_state.zoom
     ));
+
 
     ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<WGPUTextureView>(tv)), display_dim);
 }
@@ -237,8 +268,9 @@ void ShaderManager::display() {
 
     int to_remove_idx = -1;  // store shader idx user decided to remove or -1 if no remove action
     for (size_t i = 0; i < shaders.size(); i++) {
-        std::unique_ptr<ShaderUnion>& shader_desc = shaders[i];
-        const std::string shader_name = shader_desc->apply([](auto& s) { return s.name; });
+        std::unique_ptr<ShaderUnion>& shader = shaders[i];
+
+        const std::string shader_name = shader->apply([](auto& s) { return s.name; });
 
         ImGui::PushID(i);
 
@@ -259,7 +291,7 @@ void ShaderManager::display() {
             ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 90);
 
 
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0)); // Transparent when idle
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));                     // Transparent when idle
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.5f, 0.5f, 0.5f, 0.5f));  // Gray when hovered
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.5f, 0.5f, 0.5f));  // Same as hovered (optional)
 
@@ -274,7 +306,7 @@ void ShaderManager::display() {
             ImGui::SameLine();
 
             if (ImGui::Button(ICON_FA_ROTATE_LEFT)) {
-                shader_desc->apply([](auto& s) { s.reset(); });
+                shader->apply([](auto& s) { s.reset(); });
             }
 
             ImGui::SameLine();
@@ -289,7 +321,7 @@ void ShaderManager::display() {
             ImGui::EndMenuBar();
         }
 
-        shader_desc->apply([](auto& s) { return s.display(); });
+        shader->apply([](auto& s) { return s.display(); });
         ImGui::PopItemWidth();
         ImGui::EndChild();
 

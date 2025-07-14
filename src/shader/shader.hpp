@@ -5,7 +5,7 @@
 #include <string>
 #include <webgpu/webgpu-raii.hpp>
 
-#include "src/gpu_context.hpp"
+#include "src/context.hpp"
 #include "src/tagged_union.hpp"
 #include "webgpu/webgpu.hpp"
 
@@ -39,14 +39,14 @@ struct ShaderBase {
 
     void write_buffers(wgpu::Queue& queue) const { static_cast<Derived*>(this)->write_buffers(queue); }
 
-    void init(const GPUContext& ctx) { static_cast<Derived*>(this)->init(); }
+    void init(const Context& ctx) { static_cast<Derived*>(this)->init(); }
 
-    void init_module(const GPUContext& ctx) {
+    void init_module(const Context& ctx) {
         vertex_module = ctx.get_device().createShaderModule(vertex_module_desc);
         frag_module = ctx.get_device().createShaderModule(frag_module_desc);
     }
 
-    void init_pipeline(const GPUContext& ctx, const wgpu::BindGroupLayout& default_bind_group_layout) {
+    void init_pipeline(const Context& ctx, const wgpu::BindGroupLayout& default_bind_group_layout) {
         wgpu::VertexState vertex_state;
         vertex_state.module = *vertex_module;
 #ifdef __EMSCRIPTEN__
@@ -135,7 +135,7 @@ struct ShaderBase {
     }
 
     wgpu::raii::PipelineLayout make_pipeline_layout(
-        const GPUContext& ctx, const wgpu::BindGroupLayout& default_bind_group_layout
+        const Context& ctx, const wgpu::BindGroupLayout& default_bind_group_layout
     ) {
         return static_cast<Derived*>(this)->make_pipeline_layout(ctx, default_bind_group_layout);
     }
@@ -148,11 +148,11 @@ struct Shader : public ShaderBase<Shader<K>> {
         : ShaderBase<Shader<K>>(name, vertex_code, frag_code) {}
 
     // functions to template specialize
-    void init(const GPUContext& ctx);
+    void init(const Context& ctx);
     void display();
     void write_buffers(wgpu::Queue& queue) const;
     wgpu::raii::PipelineLayout make_pipeline_layout(
-        const GPUContext& ctx, const wgpu::BindGroupLayout& default_bind_group_layout
+        const Context& ctx, const wgpu::BindGroupLayout& default_bind_group_layout
     );
     void set_bind_groups(wgpu::RenderPassEncoder& pass_encoder) const;
 
@@ -162,7 +162,7 @@ struct Shader : public ShaderBase<Shader<K>> {
 
 
 template <ShaderKind K>
-void Shader<K>::init(const GPUContext& ctx) {
+void Shader<K>::init(const Context& ctx) {
     this->init_module(ctx);
 }
 
@@ -184,7 +184,7 @@ void Shader<K>::write_buffers(wgpu::Queue& queue) const {}
 
 template <ShaderKind K>
 wgpu::raii::PipelineLayout Shader<K>::make_pipeline_layout(
-    const GPUContext& ctx, const wgpu::BindGroupLayout& default_bind_group_layout
+    const Context& ctx, const wgpu::BindGroupLayout& default_bind_group_layout
 ) {
     wgpu::raii::PipelineLayout pipeline_layout;
 

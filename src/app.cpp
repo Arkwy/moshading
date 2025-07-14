@@ -1,29 +1,16 @@
-#include <sys/types.h>
-#include <cstring>
+#include "app.hpp"
 
-#include <webgpu/webgpu.h>
-#include <webgpu/webgpu-raii.hpp>
+#include <backends/imgui_impl_wgpu.h>
 #include <imgui.h>
 #include <imgui_internal.h>
-#include <backends/imgui_impl_wgpu.h>
+#include <sys/types.h>
+#include <webgpu/webgpu.h>
 
-#include "app.hpp"
-#include "shaders_code.hpp"
-#include "src/shader/shader.hpp"
-
-ImVec2 side_base_size(const ImVec2& window_size) { return ImVec2(window_size.x / 4., window_size.y); };
+#include <cstring>
+#include <webgpu/webgpu-raii.hpp>
 
 
-ImVec2 center_base_size(const ImVec2& window_size) { return ImVec2(window_size.x / 2., window_size.y); };
-
-
-App::App(const GPUContext& ctx) : ctx(ctx), shader_manager(ctx, shader_render_width, shader_render_height) {
-    shader_manager.add_shader<Shader<ShaderKind::NoParam>>("s1", fullscreen_vertex, s1);
-    shader_manager.add_shader<Shader<ShaderKind::Circle>>("circle", fullscreen_vertex, circle);
-    shader_manager.add_shader<Shader<ShaderKind::ChromaticAbberation>>("ca");
-    shader_manager.add_shader<Shader<ShaderKind::Noise>>("noise");
-    // shader_manager.add_shader(Shader<ShaderKind::Dithering>("dithering"));
-};
+App::App(Context& ctx) : ctx(ctx), shader_manager(ctx) {}
 
 
 void App::display() {
@@ -59,7 +46,7 @@ void App::display() {
     shader_manager.display();
     ImGui::End();
 
-    ImGui::Begin("shader_display");
+    ImGui::Begin("shader_display", nullptr, ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar);
     shader_manager.render();
     ImGui::End();
 }

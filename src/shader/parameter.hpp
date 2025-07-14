@@ -3,6 +3,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <cmath>  // for cos, sin
 #include <format>
 #include <iostream>
 #include <optional>
@@ -10,15 +11,16 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "src/log.hpp"
 
-namespace UserParam {
 
 enum class WidgetKind {
     Slider,
     Field,
     DragField,
+    Box2D,
     Checkbox,
     Dropdown,
 };
@@ -35,12 +37,14 @@ template <Widget... Ws>
 struct WidgetGroup {
     static constexpr size_t size = sizeof...(Ws);
 
-    std::tuple<Ws&...> widgets;
+    std::tuple<Ws...> widgets;
 
-    WidgetGroup(Ws&... widgets) : widgets(widgets...) {}
+    WidgetGroup(Ws&&... widgets) : widgets(widgets...) {}
 
-    bool display() {
-        std::apply([](auto&... widget) { return (widget.display() && ...); }, widgets);
+    bool display() const {
+        bool change = false;
+        std::apply([&](auto&... widget) { ((change |= widget.display()), ...); }, widgets);
+        return change;
     }
 
 
@@ -54,53 +58,48 @@ concept WidgetGroupType =
 
 
 
-template <size_t N, WidgetKind W>
-    requires(W == WidgetKind::Slider || W == WidgetKind::Field || W == WidgetKind::DragField)
+template <size_t N, WidgetKind... WKs>
+    requires(
+        sizeof...(WKs) > 0 &&
+        ((WKs == WidgetKind::Slider || WKs == WidgetKind::Field || WKs == WidgetKind::DragField) && ...)
+    )
 struct Float {
-    const std::string name;
-    const std::optional<std::array<std::string, N>> field_names;
-    const std::array<float, N> min;
-    const std::array<float, N> max;
-
+    std::string name;
+    std::optional<std::array<std::string, N>> field_names;
+    std::array<float, N> speed;
+    std::array<float, N> min;
+    std::array<float, N> max;
     std::span<float, N> state;
 
     Float(
         const std::string& name,
+        const std::array<float, N>& speed,
         const std::array<float, N>& min,
         const std::array<float, N>& max,
         const std::span<float, N>& state,
         const std::optional<std::array<std::string, N>>& field_names = std::nullopt
     )
-        : name(name), field_names(field_names), min(min), max(max), state(state) {}
+        : name(name), field_names(field_names), speed(speed), min(min), max(max), state(state) {}
 
-    Float(Float<N, W>& other) = delete;
-    Float(Float<N, W>&& other)
-        : name(std::move(other.name)),
-          field_names(std::move(other.field_names)),
-          min(std::move(other.min)),
-          max(std::move(other.max)),
-          state(std::move(other.state)) {
-        Log::warn(std::format("copy -> {}", static_cast<const void*>(state.data())));
+    bool display() const {
+        bool change = false;
+        ((change |= display_impl<WKs>()), ...);
+        return change;
     }
 
-    bool display() {
+  private:
+    template <WidgetKind W>
+    bool display_impl() const {
+        bool value_changed = false;
         if constexpr (W == WidgetKind::Slider) {
-            return ImGui::SliderScalarN(
-                name.c_str(),
-                ImGuiDataType_Float,
-                state,
-                N,
-                &min,
-                &max,
-                "%.3f",
-                ImGuiSliderFlags_None
-            );
+            static_assert(false, "No implementation yet.");  // TODO
+        } else if constexpr (W == WidgetKind::Field) {
+            static_assert(false, "No implementation yet.");  // TODO
         } else if constexpr (W == WidgetKind::DragField) {
             ImGuiWindow* window = ImGui::GetCurrentWindow();
             if (window->SkipItems) return false;
 
             ImGuiContext& g = *GImGui;
-            bool value_changed = false;
             ImGui::BeginGroup();
             ImGui::PushID(name.c_str());
             ImGui::PushMultiItemsWidths(N, ImGui::CalcItemWidth());
@@ -111,9 +110,9 @@ struct Float {
                     "",
                     ImGuiDataType_Float,
                     state.data() + i,
-                    max[i] == min[i] ? 0.1 : (max[i] - min[i]) / 100.0,
-                    min.data() + i,
-                    max.data() + i,
+                    speed[i],
+                    &min[i],
+                    &max[i],
                     field_names.has_value() ? std::format("{}: %.3f", field_names.value()[i]).c_str() : "%.3f",
                     0
                 );
@@ -126,11 +125,47 @@ struct Float {
             ImGui::Text("%s", name.c_str());
 
             ImGui::EndGroup();
-            return value_changed;
         }
+        return value_changed;
     }
 };
 
+struct Box2D {
+    std::string name;
+    std::optional<std::array<std::string, 2>> axis_names;
+    std::array<float, 2> min;
+    std::array<float, 2> max;
+    bool soft_limits;
+    std::span<float, 2> state;
+    std::span<float, 2> box_dim;
+    float& rotation;
+
+    Box2D(
+        const std::string& name,
+        const std::array<float, 2>& min,
+        const std::array<float, 2>& max,
+        const bool& soft_limits,
+        const std::span<float, 2>& state,
+        const std::span<float, 2>& box_dim,
+        float& rotation,
+        const std::optional<std::array<std::string, 2>>& axis_names = std::nullopt
+    );
+
+    bool display() const;
+
+  private:
+    static void draw_image_border(
+        ImDrawList* draw_list,
+        ImVec2 center,
+        ImVec2 size,
+        float angle_rad,
+        ImVec2 draw_area_min,
+        ImVec2 draw_area_max,
+        ImU32 color,
+        bool filled = true
+    );
+    static std::vector<ImVec2> clip_polygon_edge(const std::vector<ImVec2>& poly, const ImVec2& p1, const ImVec2& p2);
+};
 
 
 template <WidgetKind W>
@@ -144,92 +179,89 @@ struct Integer {
     Integer(const std::string& name, const int& min, const int& max, int const state)
         : name(name), min(min), max(max), state(state) {}
 
-    Integer(const Integer<W>& other) { std::cout << "copy !!! ò_ó" << std::endl; }
+    Integer(const Integer<W>& other) {
+        std::cout << "copy !!! ò_ó" << std::endl;
+    }
 
-    void display();
+    bool display() const;
 };
 
 
 
 template <typename T>
-using optional_ref = std::conditional_t<std::is_void_v<T>, std::monostate, std::optional<std::reference_wrapper<T>>>;
+using opt = std::conditional_t<std::is_void_v<T>, std::monostate, std::optional<T>>;
 
-
-template <typename OptRef>
-void display_if_present(OptRef& maybe_ref) {
-    if constexpr (!std::is_same_v<std::remove_const_t<OptRef>, std::monostate>) {
-        if (maybe_ref) maybe_ref->get().display();
+template <typename OptChild>
+void display_if_present(OptChild& maybe_child) {
+    if constexpr (!std::is_same_v<std::remove_const_t<OptChild>, std::monostate>) {
+        if (maybe_child) maybe_child.value().display();
     }
 }
-
-template <size_t I = 0, typename... OptRefs>
-static void display_indexed(size_t index, const std::tuple<OptRefs...>& t) {
-    if constexpr (I < sizeof...(OptRefs)) {
-        if (index == I) {
-            display_if_present(std::get<I>(t));
-        } else {
-            display_indexed<I + 1>(index, t);
-        }
-    }
-}
-
 
 template <WidgetKind W, WidgetGroupType Childs = void>
 struct Feature {
     const std::string name;
-    optional_ref<Childs> childs;
+    const opt<Childs> childs;
 
-    bool state;
+    bool& state;
 
-    Feature(const std::string& name, const bool& initial_state)
+    Feature(const std::string& name, bool& state)
         requires std::is_same_v<Childs, void>
-        : name(name), childs(std::monostate{}), state(initial_state) {}
+        : name(name), childs(std::monostate{}), state(state) {}
 
-    Feature(const std::string& name, const bool& initial_state, const optional_ref<Childs>& childs)
+    Feature(const std::string& name, bool& initial_state, Childs&& childs)
         requires(!std::is_same_v<Childs, void>)
-        : name(name), childs(childs), state(initial_state) {}
+        : name(name), childs(std::make_optional(std::forward(childs))), state(state) {}
 
 
-    bool get_state() const { return state; }
-
-    void display()
+    bool display() const
         requires(W == WidgetKind::Checkbox)
     {
-        ImGui::Checkbox(name.c_str(), &state);
+        bool change = ImGui::Checkbox(name.c_str(), &state);
         if (state) display_if_present(childs);
+        return change;
     }
 };
 
+
+
+template <size_t I = 0, WidgetGroupType... WGs>
+bool display_indexed(size_t index, const std::tuple<WGs...>& t) {
+    if constexpr (I < sizeof...(WGs)) {
+        if (index == I) {
+            return std::get<I>(t).display();
+        } else {
+            return display_indexed<I + 1>(index, t);
+        }
+    }
+}
 
 
 template <WidgetKind W, WidgetGroupType... Childs>
 struct Choice {
     const std::string name;
     const std::array<std::string, sizeof...(Childs)> values;
-    const std::tuple<optional_ref<Childs>...> childs;
+    const std::tuple<Childs...> childs;
 
-    size_t state;
+    unsigned int& state;
 
     Choice(
         const std::string& name,
-        const size_t& initial_state_idx,
+        unsigned int& state,
         const std::array<std::string, sizeof...(Childs)>& values,
-        const optional_ref<Childs>&... childs
+        Childs&&... childs
     )
-        : name(name), values(values), childs(childs...), state(initial_state_idx) {}
+        : name(name), values(values), childs(childs...), state(state) {}
 
-    Choice(
-        const std::string& name,
-        const size_t& initial_state_idx,
-        const std::array<std::string, sizeof...(Childs)>& values
-    )
-        : name(name), values(values), childs(), state(initial_state_idx) {}
+    Choice(const std::string& name, unsigned int& state, const std::array<std::string, sizeof...(Childs)>& values)
+        : name(name), values(values), childs(), state(state) {}
 
-    void display()
+    bool display() const
         requires(W == WidgetKind::Dropdown)
     {
-        if (ImGui::BeginCombo(name.c_str(), values[state].c_str())) {
-            for (int i = 0; i < values.size(); i++) {
+        bool change = ImGui::BeginCombo(name.c_str(), values[state].c_str());
+        if (change) {
+            for (unsigned int i = 0; i < values.size(); i++) {
                 const bool is_selected = (i == state);
 
                 if (ImGui::Selectable(values[i].c_str(), is_selected)) state = i;
@@ -240,7 +272,8 @@ struct Choice {
             }
             ImGui::EndCombo();
         }
-        display_indexed(state, childs);
+        change |= display_indexed(state, childs);
+        return change;
     }
 };
 
@@ -248,5 +281,3 @@ template <Widget W>
 void window(W& params) {
     params.display();
 }
-
-}  // namespace UserParam

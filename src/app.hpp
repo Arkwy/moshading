@@ -7,18 +7,15 @@
 #include "shader/manager.hpp"
 
 #include <webgpu/webgpu.h>
-#include "gpu_context.hpp"
+#include "context.hpp"
 
 struct App {
-    const GPUContext& ctx;
+    Context& ctx;
     
-    App(const GPUContext& ctx);
+    App(Context& ctx);
     void display();
 
   private:
-    unsigned int shader_render_width = 1920;
-    unsigned int shader_render_height = 1080;
-
     ShaderManager shader_manager;
     bool initiliazed = false;
 };

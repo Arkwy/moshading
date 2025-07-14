@@ -18,12 +18,12 @@
 #endif
 
 #include "renderer.hpp"
-#include "gpu_context.hpp"
+#include "context.hpp"
 
 int main() {
 
 
-    GPUContext ctx;
+    Context ctx;
     if (!ctx.init()) {
         return 1;
     }

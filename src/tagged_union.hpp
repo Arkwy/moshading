@@ -1,48 +1,51 @@
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <optional>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <variant>
 
 
-template <typename Target, typename VariadicHead, typename... VariadicTail>
-constexpr size_t variadic_index_of() {
-    if constexpr (std::is_same_v<Target, VariadicHead>) {
-        return 0;
-    } else {
-        static_assert(sizeof...(VariadicTail), "Target type not found in type list");
-        return 1 + variadic_index_of<Target, VariadicTail...>();
-    }
-}
-
-
-template <typename... Ts>
+template <typename... Ts> requires (sizeof...(Ts) > 0)
 struct TaggedUnion {
     static constexpr size_t TagCount = sizeof...(Ts);
 
-    enum class Tag { None = TagCount };
+    enum class Tag: size_t { None = TagCount };
 
     Tag tag = Tag::None;
 
+    template <typename T> requires (std::is_same_v<T, Ts> || ...)
+    static constexpr Tag tag_of = []() constexpr {
+        std::size_t index = 0;
+        ((std::is_same_v<T, Ts> ? true : (++index, false)) || ...);
+        return Tag(index);
+    }();
+
     ~TaggedUnion() { destroy(); }
 
-    template <typename T, typename... Args>
+    template <typename T, typename... Args> requires (std::is_same_v<T, Ts> || ...)
     void set(Args&&... args) {
         destroy();
         new (&storage) T(std::forward<Args>(args)...);
-        tag = Tag(variadic_index_of<T, Ts...>());
+        tag = tag_of<T>;
     }
 
-    template <typename T>
+    template <typename T> requires (std::is_same_v<T, Ts> || ...)
+    bool is_current() const {
+        return tag_of<T> == tag;
+    }
+
+    template <typename T> requires (std::is_same_v<T, Ts> || ...)
     T& get() {
-        if (tag != Tag(variadic_index_of<T, Ts...>())) throw std::bad_variant_access();  // or assert
+        if (tag != tag_of<T>) throw std::bad_variant_access();  // or assert
         return *reinterpret_cast<T*>(&storage);
     }
 
-    template <typename T>
+    template <typename T> requires (std::is_same_v<T, Ts> || ...)
     const T& get() const {
-        if (tag != Tag(variadic_index_of<T, Ts...>())) throw std::bad_variant_access();  // or assert
+        if (tag != tag_of<T>) throw std::bad_variant_access();  // or assert
         return *reinterpret_cast<const T*>(&storage);
     }
 

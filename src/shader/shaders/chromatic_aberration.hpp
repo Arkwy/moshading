@@ -6,14 +6,12 @@
 #include <webgpu/webgpu.hpp>
 
 #include "shaders_code.hpp"
-#include "src/shader/shader.hpp"
 #include "src/shader/parameter.hpp"
-
+#include "src/shader/shader.hpp"
 
 template <>
 struct Shader<ShaderKind::ChromaticAbberation> : public ShaderBase<Shader<ShaderKind::ChromaticAbberation>> {
-
-    enum class Mode : int {
+    enum class Mode: unsigned int {
         Uniform,
         LinearScaling,
         QuadraticScaling,
@@ -42,13 +40,74 @@ struct Shader<ShaderKind::ChromaticAbberation> : public ShaderBase<Shader<Shader
                 float uni_blue_shift[2];
                 float scale_center[2];
                 float scale_intensity[3];
-                int mode_id;
+                unsigned int mode_id;
             };
         };
     };
 
     Uniforms uniforms = {{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, Mode::Uniform}}};
-    UserParam::Float<2, UserParam::WidgetKind::DragField> test_param;
+
+    template <size_t N>
+    using FField = Float<N, WidgetKind::DragField>;
+    template <size_t N>
+    using FieldNames = std::optional<std::array<std::string, N>>;
+    using UniformModeFields = WidgetGroup<FField<2>, FField<2>, FField<2>>;
+    using ScalingModeFields = WidgetGroup<FField<2>, FField<3>>;
+    using Parameters = Choice<WidgetKind::Dropdown, UniformModeFields, ScalingModeFields>;
+
+    Parameters parameters;
+
+    static Parameters init_parameters(Uniforms& uniforms) {
+        return Parameters(
+            "mode",
+            uniforms.mode_id,
+            {"uniform", "linear scaling"},
+            UniformModeFields(
+                FField<2>(
+                    "red",
+                    {0.001, 0.001},
+                    {0, 0},
+                    {0, 0},
+                    std::span<float, 2>(uniforms.uni_red_shift, 2),
+                    FieldNames<2>({"x", "y"})
+                ),
+                FField<2>(
+                    "green",
+                    {0.001, 0.001},
+                    {0, 0},
+                    {0, 0},
+                    std::span<float, 2>(uniforms.uni_green_shift, 2),
+                    FieldNames<2>({"x", "y"})
+                ),
+                FField<2>(
+                    "blue",
+                    {0.001, 0.001},
+                    {0, 0},
+                    {0, 0},
+                    std::span<float, 2>(uniforms.uni_blue_shift, 2),
+                    FieldNames<2>({"x", "y"})
+                )
+            ),
+            ScalingModeFields(
+                FField<2>(
+                    "center",
+                    {0.001, 0.001},
+                    {0, 0},
+                    {0, 0},
+                    std::span<float, 2>(uniforms.scale_center, 2),
+                    FieldNames<2>({"x", "y"})
+                ),
+                FField<3>(
+                    "intensity",
+                    {0.001, 0.001, 0.001},
+                    {0, 0, 0},
+                    {0, 0, 0},
+                    std::span<float, 3>(uniforms.scale_intensity, 3),
+                    FieldNames<3>({"r", "g", "b"})
+                )
+            )
+        );
+    }
 
     wgpu::raii::BindGroupLayout bind_group_layout;
     wgpu::raii::Buffer buffer;
@@ -57,11 +116,10 @@ struct Shader<ShaderKind::ChromaticAbberation> : public ShaderBase<Shader<Shader
 
     Shader(const std::string& name)
         : ShaderBase<Shader<ShaderKind::ChromaticAbberation>>(name, fullscreen_vertex, chromatic_aberration),
-          test_param("test", {0.0, 0.0}, {0.0, 0.0}, std::span<float, 2>(uniforms.uni_red_shift, 2), std::optional<std::array<std::string, 2>>({"x", "y"}))
+          parameters(init_parameters(uniforms)) {}
 
-    {}
 
-    void init(const GPUContext& ctx) {
+    void init(const Context& ctx) {
         this->init_module(ctx);
 
         wgpu::BindGroupLayoutEntry bgl_entry;
@@ -97,8 +155,9 @@ struct Shader<ShaderKind::ChromaticAbberation> : public ShaderBase<Shader<Shader
         bind_group = ctx.get_device().createBindGroup(bg_desc);
     }
 
+
     wgpu::raii::PipelineLayout make_pipeline_layout(
-        const GPUContext& ctx, const wgpu::BindGroupLayout& default_bind_group_layout
+        const Context& ctx, const wgpu::BindGroupLayout& default_bind_group_layout
     ) {
         wgpu::raii::PipelineLayout pipeline_layout;
 
@@ -113,25 +172,17 @@ struct Shader<ShaderKind::ChromaticAbberation> : public ShaderBase<Shader<Shader
     }
 
 
-    void display() {
-        ImGui::Combo("Mode", &uniforms.mode_id, modes, 3);
-        switch (uniforms.mode) {
-            case Mode::Uniform:
-                test_param.display();
-                // ImGui::DragFloat2("red", uniforms.uni_red_shift, 0.001);
-                ImGui::DragFloat2("green", uniforms.uni_green_shift, 0.001);
-                ImGui::DragFloat2("blue", uniforms.uni_blue_shift, 0.001);
-                break;
-            default:
-                ImGui::DragFloat2("center", uniforms.scale_center, 0.01);
-                ImGui::DragFloat3("intensity", uniforms.scale_intensity, 0.001);
-                break;
-        }
+    void display() const {
+        parameters.display();
     }
 
-    void reset() { uniforms = {{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, Mode::Uniform}}}; }
+    void reset() {
+        uniforms = {{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, Mode::Uniform}}};
+    }
 
-    void write_buffers(wgpu::Queue& queue) const { queue.writeBuffer(*buffer, 0, &uniforms, sizeof(uniforms)); }
+    void write_buffers(wgpu::Queue& queue) const {
+        queue.writeBuffer(*buffer, 0, &uniforms, sizeof(uniforms));
+    }
 
     void set_bind_groups(wgpu::RenderPassEncoder& pass_encoder) const {
         pass_encoder.setBindGroup(1, *bind_group, 0, nullptr);

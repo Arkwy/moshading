@@ -23,6 +23,7 @@ embed_icons = custom_target(
 )
 embed_icons_dep = declare_dependency(sources: embed_icons)
 
+
 # ImGui files
 imgui_dir = 'imgui'
 imgui_files = [
@@ -48,7 +49,7 @@ stb_files = [ stb_dir / 'stb_image.cpp' ]
 # Source files
 moshading_files = [
   'src/main.cpp',
-  'src/gpu_context.cpp',
+  'src/context.cpp',
   'src/renderer.cpp',
   'src/app.cpp',
   'src/file_loader.cpp',
@@ -123,7 +124,7 @@ else
             wgpu_dep,
         ],
         link_args: ['-lwgpu_native'],
-        cpp_args: ['-g', '-O0', '-DIMGUI_IMPL_WEBGPU_BACKEND_WGPU', '-DWEBGPU_BACKEND_WGPU'],
+        cpp_args: ['-g', '-O0', '-DIMGUI_IMPL_WEBGPU_BACKEND_WGPU', '-DWEBGPU_BACKEND_WGPU', '-ftemplate-backtrace-limit=0'],
         install: false,
     )
 endif

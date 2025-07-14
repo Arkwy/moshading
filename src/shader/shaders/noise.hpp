@@ -49,7 +49,7 @@ struct Shader<ShaderKind::Noise> : public ShaderBase<Shader<ShaderKind::Noise>> 
     wgpu::raii::Buffer buffer;
     wgpu::raii::BindGroup bind_group;
 
-    void init(const GPUContext& ctx) {
+    void init(const Context& ctx) {
         this->init_module(ctx);
 
         wgpu::BindGroupLayoutEntry bgl_entry;
@@ -86,7 +86,7 @@ struct Shader<ShaderKind::Noise> : public ShaderBase<Shader<ShaderKind::Noise>> 
     }
 
     wgpu::raii::PipelineLayout make_pipeline_layout(
-        const GPUContext& ctx, const wgpu::BindGroupLayout& default_bind_group_layout
+        const Context& ctx, const wgpu::BindGroupLayout& default_bind_group_layout
     ) {
         wgpu::raii::PipelineLayout pipeline_layout;
 

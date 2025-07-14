@@ -17,7 +17,7 @@ void Renderer::terminate() {
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
-    this->surface->release();  // released manually as it must be relesead before instance is
+    this->surface->release();  // released manualy as it must be released before instance is
 
     glfwDestroyWindow(this->window);
     glfwTerminate();
