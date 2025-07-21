@@ -5,12 +5,9 @@
 #include <emscripten/bind.h>
 
 // Global pointer to current FileLoader instance (basic signal bridge)
-static FileLoader* current_loader = nullptr;
 
 // Called from JS when files are selected
-extern "C" void on_files_selected(const char* files_csv) {
-    if (!current_loader) return;
-
+extern "C" void on_files_selected(const char* files_cs, void* file_loader_ptr) {
     std::string csv(files_csv);
     std::vector<std::string> results;
     size_t start = 0;
@@ -22,19 +19,20 @@ extern "C" void on_files_selected(const char* files_csv) {
     }
     if (start < csv.length()) results.push_back(csv.substr(start));
 
-    current_loader->selected_files = std::move(results);
-    current_loader->ready = true;
+    FileLoader file_loader = *reinterpret_cast<FileLoader*>(file_loader_ptr);
+    file_loader->selected_files = std::move(results);
+    file_loader->ready = true;
 }
 
 // JavaScript: opens file dialog and reports result back via on_files_selected
-EM_JS(void, open_file_dialog, (const char* accept), {
+EM_JS(void, open_file_dialog, (const char* accept, void* file_loader_ptr), {
     const input = document.createElement('input');
     input.type = 'file';
-    input.multiple = true;
+    input.multiple = false;
     input.accept = UTF8ToString(accept);
     input.onchange = function(e) {
         const files = Array.from(input.files).map(f => f.name).join(';');
-        ccall('on_files_selected', 'void', ['string'], [files]);
+        ccall('on_files_selected', 'void', ['string', 'number'], [files, file_loader]);
     };
     input.click();
 });
@@ -43,8 +41,7 @@ template <>
 bool FileLoader::open_dialog<OpenType::Image>() {
     if (current_loader != nullptr || ready) return false;
 
-    current_loader = this;
-    open_file_dialog(".png,.jpg,.jpeg,.bmp");
+    open_file_dialog(".png,.jpg,.jpeg,.bmp", this);
     return true;
 }
 
