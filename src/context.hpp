@@ -2,24 +2,15 @@
 
 #include <webgpu/webgpu-raii.hpp>
 
+#include "context/gpu.hpp"
+#include "context/rendering.hpp"
+#include "context/cache.hpp"
+#include "src/file_loader.hpp"
+
 struct Context {
-    std::array<unsigned int, 2> render_dim = {1920, 1080}; 
+    GPU gpu;
+    Rendering rendering;
+    ShaderSourceCache cache;
 
-    const wgpu::Instance& get_instance() const;
-#ifndef __EMSCRIPEN__
-    const wgpu::Adapter& get_adapter() const;
-#endif
-    const wgpu::Device& get_device() const;
-
-    bool init();
-
-  private:
-    bool initialized = false;
-
-    wgpu::raii::Instance instance;
-#ifndef __EMSCRIPTEN__ // TODO manage adapter if needed, currently letting emscripten do the work
-    wgpu::raii::Adapter adapter;
-#endif
-    wgpu::raii::Device device;
-
+    Context(): gpu(), rendering(), cache(gpu) {}
 };

@@ -13,8 +13,6 @@
 #include <utility>
 #include <vector>
 
-#include "src/log.hpp"
-
 
 enum class WidgetKind {
     Slider,

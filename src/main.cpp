@@ -24,7 +24,7 @@ int main() {
 
 
     Context ctx;
-    if (!ctx.init()) {
+    if (!ctx.gpu.init()) {
         return 1;
     }
 
@@ -41,13 +41,13 @@ int main() {
     emscripten_set_main_loop_arg([](void* renderer)->void{static_cast<Renderer*>(renderer)->main_loop();}, &renderer, 0, true);
 #else
     while (renderer.is_running()) renderer.main_loop();
-    ctx.get_device().poll(true, nullptr); // make sure every command terminates before quitting
+    ctx.gpu.get_device().poll(true, nullptr); // make sure every command terminates before quitting
 #endif
 
     renderer.terminate();
 
 #ifndef __EMSCRIPTEN__
-    ctx.get_device().poll(true, nullptr); // make sure every command terminates before quitting
+    ctx.gpu.get_device().poll(true, nullptr); // make sure every command terminates before quitting
 #endif
 
     return 0;

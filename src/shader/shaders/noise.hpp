@@ -5,14 +5,15 @@
 #include <webgpu/webgpu-raii.hpp>
 
 #include "shaders_code.hpp"
+#include "src/context.hpp"
 #include "src/shader/shader.hpp"
 #include "webgpu/webgpu.hpp"
 
 
 template <>
 struct Shader<ShaderKind::Noise> : public ShaderBase<Shader<ShaderKind::Noise>> {
-    Shader(const std::string& name)
-        : ShaderBase<Shader<ShaderKind::Noise>>(name, fullscreen_vertex, noise) {}
+    Shader(const std::string& name, const Context& ctx)
+        : ShaderBase<Shader<ShaderKind::Noise>>(name, ctx.cache.get(fullscreen_vertex), ctx.cache.get(noise), ctx) {}
 
     enum class Mode : int {
         Grey,
@@ -50,8 +51,6 @@ struct Shader<ShaderKind::Noise> : public ShaderBase<Shader<ShaderKind::Noise>> 
     wgpu::raii::BindGroup bind_group;
 
     void init(const Context& ctx) {
-        this->init_module(ctx);
-
         wgpu::BindGroupLayoutEntry bgl_entry;
         bgl_entry.binding = 0;
         bgl_entry.visibility = wgpu::ShaderStage::Fragment;
@@ -62,14 +61,14 @@ struct Shader<ShaderKind::Noise> : public ShaderBase<Shader<ShaderKind::Noise>> 
         wgpu::BindGroupLayoutDescriptor bgl_desc;
         bgl_desc.entryCount = 1;
         bgl_desc.entries = &bgl_entry;
-        bind_group_layout = ctx.get_device().createBindGroupLayout(bgl_desc);
+        bind_group_layout = ctx.gpu.get_device().createBindGroupLayout(bgl_desc);
 
         wgpu::BufferDescriptor buffer_desc;
         buffer_desc.usage = wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
         buffer_desc.size = sizeof(Uniforms);
         buffer_desc.mappedAtCreation = false;
 
-        buffer = ctx.get_device().createBuffer(buffer_desc);
+        buffer = ctx.gpu.get_device().createBuffer(buffer_desc);
 
         wgpu::BindGroupEntry bg_uniforms_entry;
         bg_uniforms_entry.binding = 0;
@@ -82,7 +81,7 @@ struct Shader<ShaderKind::Noise> : public ShaderBase<Shader<ShaderKind::Noise>> 
         bg_desc.entryCount = 1;
         bg_desc.entries = &bg_uniforms_entry;
 
-        bind_group = ctx.get_device().createBindGroup(bg_desc);
+        bind_group = ctx.gpu.get_device().createBindGroup(bg_desc);
     }
 
     wgpu::raii::PipelineLayout make_pipeline_layout(
@@ -95,7 +94,7 @@ struct Shader<ShaderKind::Noise> : public ShaderBase<Shader<ShaderKind::Noise>> 
         wgpu::PipelineLayoutDescriptor pipeline_layout_desc;
         pipeline_layout_desc.bindGroupLayoutCount = 2;
         pipeline_layout_desc.bindGroupLayouts = bgls;
-        pipeline_layout = ctx.get_device().createPipelineLayout(pipeline_layout_desc);
+        pipeline_layout = ctx.gpu.get_device().createPipelineLayout(pipeline_layout_desc);
 
         return pipeline_layout;
     }

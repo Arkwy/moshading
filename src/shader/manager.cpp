@@ -4,7 +4,6 @@
 #include <imgui.h>
 
 #include <chrono>
-#include <filesystem>
 #include <memory>
 #include <webgpu/webgpu.hpp>
 
@@ -29,18 +28,18 @@ void ShaderManager::init() {
     texture_desc.label.data = "shader_render";
     texture_desc.label.length = WGPU_STRLEN;
 #endif
-    texture_desc.size.width = ctx.render_dim[0];
-    texture_desc.size.height = ctx.render_dim[1];
+    texture_desc.size.width = ctx.rendering.dim[0];
+    texture_desc.size.height = ctx.rendering.dim[1];
     texture_desc.size.depthOrArrayLayers = 1;
     texture_desc.format = wgpu::TextureFormat::RGBA8Unorm;
     texture_desc.sampleCount = 1;
     texture_desc.mipLevelCount = 1;
     texture_desc.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TextureBinding;
 
-    texture_A = ctx.get_device().createTexture(texture_desc);
+    texture_A = ctx.gpu.get_device().createTexture(texture_desc);
     texture_view_A = texture_A->createView();
 
-    texture_B = ctx.get_device().createTexture(texture_desc);
+    texture_B = ctx.gpu.get_device().createTexture(texture_desc);
     texture_view_B = texture_B->createView();
 
     // Sampler
@@ -50,7 +49,7 @@ void ShaderManager::init() {
     sampler_desc.mipmapFilter = wgpu::MipmapFilterMode::Nearest;
     sampler_desc.maxAnisotropy = 1;
 
-    sampler = ctx.get_device().createSampler(sampler_desc);
+    sampler = ctx.gpu.get_device().createSampler(sampler_desc);
 
     // Default uniforms
     wgpu::BufferDescriptor du_buffer_desc;
@@ -58,7 +57,7 @@ void ShaderManager::init() {
     du_buffer_desc.size = sizeof(DefaultUniforms);
     du_buffer_desc.mappedAtCreation = false;
 
-    default_uniforms = ctx.get_device().createBuffer(du_buffer_desc);
+    default_uniforms = ctx.gpu.get_device().createBuffer(du_buffer_desc);
 
 
     // Bind group layout
@@ -84,7 +83,7 @@ void ShaderManager::init() {
     bgl_desc.entryCount = 3;
     bgl_desc.entries = bgl_entries;
 
-    default_bind_group_layout = ctx.get_device().createBindGroupLayout(bgl_desc);
+    default_bind_group_layout = ctx.gpu.get_device().createBindGroupLayout(bgl_desc);
 
     // Bind groups
     // entries
@@ -121,20 +120,20 @@ void ShaderManager::init() {
     bg_B_desc.entries = bg_B_entries;
 
     // bind groups
-    bind_group_A = ctx.get_device().createBindGroup(bg_A_desc);
-    bind_group_B = ctx.get_device().createBindGroup(bg_B_desc);
+    bind_group_A = ctx.gpu.get_device().createBindGroup(bg_A_desc);
+    bind_group_B = ctx.gpu.get_device().createBindGroup(bg_B_desc);
 
     for (std::unique_ptr<ShaderUnion>& s : shaders) {
         s->apply([&](auto& s) { s.init_pipeline(ctx, *default_bind_group_layout); });
         if (s->is_current<Shader<ShaderKind::Image>>()) {
-            s->get<Shader<ShaderKind::Image>>().set_render_dim(ctx.render_dim);
+            s->get<Shader<ShaderKind::Image>>().set_render_dim(ctx.rendering.dim);
         }
     }
 }
 
 
 void ShaderManager::resize(unsigned int new_width, unsigned int new_height) {
-    ctx.render_dim = std::array<unsigned int, 2>({new_width, new_height});
+    ctx.rendering.dim = std::array<unsigned int, 2>({new_width, new_height});
     init();
 }
 
@@ -149,8 +148,8 @@ void ShaderManager::reorder_element(size_t index, size_t new_index) {
 
 
 void ShaderManager::render() const {
-    unsigned int& width = ctx.render_dim[0];
-    unsigned int& height = ctx.render_dim[1];
+    unsigned int& width = ctx.rendering.dim[0];
+    unsigned int& height = ctx.rendering.dim[1];
 
     assert(*texture_view_A && *texture_view_B);
     wgpu::TextureView tv = *texture_view_A;
@@ -160,7 +159,7 @@ void ShaderManager::render() const {
         std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - start_time).count()
     };
 
-    wgpu::raii::Queue queue = ctx.get_device().getQueue();
+    wgpu::raii::Queue queue = ctx.gpu.get_device().getQueue();
 
     queue->writeBuffer(*default_uniforms, 0, &du, sizeof(du));
     for (size_t i = 0; i < shaders.size(); i++) {
@@ -178,7 +177,7 @@ void ShaderManager::render() const {
     render_pass_desc.colorAttachments = &color_attachment;
     render_pass_desc.depthStencilAttachment = nullptr;
 
-    wgpu::raii::CommandEncoder cmd_encoder = ctx.get_device().createCommandEncoder();
+    wgpu::raii::CommandEncoder cmd_encoder = ctx.gpu.get_device().createCommandEncoder();
 
     // Clear previous render
     color_attachment.view = *texture_view_A;
@@ -253,19 +252,6 @@ void ShaderManager::render() const {
 
 
 void ShaderManager::display() {
-    if (file_loader.check()) {
-        std::vector<std::string> file_paths = file_loader.get_result().value();
-        if (file_paths.size()) {
-            if (file_paths.size() > 1) {
-                Log::error("More than in image file returned.");
-            }
-            add_shader<Shader<ShaderKind::Image>>(
-                std::filesystem::path(file_paths[0]).filename().stem().string(),
-                file_paths[0]
-            );
-        }
-    }
-
     int to_remove_idx = -1;  // store shader idx user decided to remove or -1 if no remove action
     for (size_t i = 0; i < shaders.size(); i++) {
         std::unique_ptr<ShaderUnion>& shader = shaders[i];
@@ -338,14 +324,30 @@ void ShaderManager::display() {
 
         ImGui::PopID();
     }
-
-    if (ImGui::Button("Add image")) {
-        if (!file_loader.open_dialog<OpenType::Image>()) {
-            Log::warn("A dialog is already opened, file opening aborted.");
-        }
-    }
-
     if (to_remove_idx >= 0) {
         shaders.erase(shaders.begin() + to_remove_idx);
     }
+
+
+    ImGui::BeginChild("add_shader");
+    ImGui::Text("Select shader to add");
+#define X(name) #name
+    std::vector<std::string> shaders = {SHADER_VARIANTS};
+#undef X
+    bool change = ImGui::BeginCombo("shader", shaders[selected_shader].c_str());
+    if (change) {
+        for (unsigned int i = 0; i < shaders.size(); i++) {
+            const bool is_selected = (i == selected_shader);
+
+            if (ImGui::Selectable(shaders[i].c_str(), is_selected)) selected_shader = i;
+
+            if (is_selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+    creation_dialog(static_cast<ShaderKind>(selected_shader));
+    ImGui::EndChild();
+
 }

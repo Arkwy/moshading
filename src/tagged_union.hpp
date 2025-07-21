@@ -10,6 +10,7 @@
 
 template <typename... Ts> requires (sizeof...(Ts) > 0)
 struct TaggedUnion {
+
     static constexpr size_t TagCount = sizeof...(Ts);
 
     enum class Tag: size_t { None = TagCount };
@@ -39,19 +40,19 @@ struct TaggedUnion {
 
     template <typename T> requires (std::is_same_v<T, Ts> || ...)
     T& get() {
-        if (tag != tag_of<T>) throw std::bad_variant_access();  // or assert
+        if (tag != tag_of<T>) throw std::bad_variant_access();
         return *reinterpret_cast<T*>(&storage);
     }
 
     template <typename T> requires (std::is_same_v<T, Ts> || ...)
     const T& get() const {
-        if (tag != tag_of<T>) throw std::bad_variant_access();  // or assert
+        if (tag != tag_of<T>) throw std::bad_variant_access();
         return *reinterpret_cast<const T*>(&storage);
     }
 
     template <typename Func>
     decltype(auto) apply(Func&& func) {
-        return apply_impl(std::forward<Func>(func), std::index_sequence_for<Ts...>{});
+        return apply_impl(func, std::index_sequence_for<Ts...>{});
     }
 
   private:
@@ -79,7 +80,7 @@ struct TaggedUnion {
     }
 
     template <typename Func, std::size_t... Is>
-    decltype(auto) apply_impl(Func&& func, std::index_sequence<Is...>) {
+    decltype(auto) apply_impl(Func& func, std::index_sequence<Is...>) {
         using ReturnType = std::invoke_result_t<Func, std::tuple_element_t<0, std::tuple<Ts...>>&>;
 
         static_assert(
@@ -90,15 +91,14 @@ struct TaggedUnion {
             "All types of this union does not return the same type for the applied function."
         );
 
+        bool matched = false;
         if constexpr (!std::is_void_v<ReturnType>) {
-            bool matched = false;
             std::optional<ReturnType> result = std::nullopt;
             (try_apply<Func, ReturnType, Is>(func, matched, result), ...);
             assert(result.has_value());
             ReturnType realsult = std::move(result.value());
             return realsult;
         } else {
-            bool matched = false;
             (try_apply<Func, Is>(func, matched), ...);
         }
     }

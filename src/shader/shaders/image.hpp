@@ -5,12 +5,18 @@
 
 #include <cmath>
 #include <cstdint>
+#include <filesystem>
+#include <memory>
+#include <optional>
 #include <stdexcept>
-#include <tuple>
+#include <valarray>
 #include <webgpu/webgpu-raii.hpp>
 
-#include "imgui_internal.h"
 #include "shaders_code.hpp"
+#include "src/context.hpp"
+#include "src/file_loader.hpp"
+#include "src/log.hpp"
+#include "src/shader/manager.hpp"
 #include "src/shader/parameter.hpp"
 #include "src/shader/shader.hpp"
 #include "webgpu/webgpu.hpp"
@@ -76,8 +82,8 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
 
     Parameters parameters;
 
-    Shader(const std::string& name, const std::string& image_path)
-        : ShaderBase<Shader<ShaderKind::Image>>(name, fullscreen_vertex, image),
+    Shader(const std::string& name, const std::string& image_path, const Context& ctx)
+        : ShaderBase<Shader<ShaderKind::Image>>(name, ctx.cache.get(fullscreen_vertex), ctx.cache.get(image), ctx),
           image_path(image_path),
           parameters(init_parameters(uniforms, render_dim)) {}
 
@@ -103,9 +109,7 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
 
 
     void init(const Context& ctx) {
-        this->init_module(ctx);
-
-        set_render_dim(ctx.render_dim);
+        set_render_dim(ctx.rendering.dim);
         std::get<2>(parameters.widgets).max = {static_cast<float>(render_dim[0]), static_cast<float>(render_dim[1])};
 
         // loading image
@@ -131,10 +135,10 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
         tex_desc.viewFormatCount = 0;
         tex_desc.viewFormats = nullptr;
 
-        texture = ctx.get_device().createTexture(tex_desc);
+        texture = ctx.gpu.get_device().createTexture(tex_desc);
 
         // upload to GPU
-        wgpu::raii::Queue queue = ctx.get_device().getQueue();
+        wgpu::raii::Queue queue = ctx.gpu.get_device().getQueue();
 
         wgpu::TexelCopyTextureInfo tcti;
         tcti.texture = *texture;
@@ -176,7 +180,7 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
         sampler_desc.mipmapFilter = wgpu::MipmapFilterMode::Nearest;
         sampler_desc.maxAnisotropy = 1;
 
-        sampler = ctx.get_device().createSampler(sampler_desc);
+        sampler = ctx.gpu.get_device().createSampler(sampler_desc);
 
 
         wgpu::BindGroupLayoutEntry bgl_entries[3];
@@ -200,14 +204,14 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
         wgpu::BindGroupLayoutDescriptor bgl_desc;
         bgl_desc.entryCount = 3;
         bgl_desc.entries = bgl_entries;
-        bind_group_layout = ctx.get_device().createBindGroupLayout(bgl_desc);
+        bind_group_layout = ctx.gpu.get_device().createBindGroupLayout(bgl_desc);
 
         wgpu::BufferDescriptor buffer_desc;
         buffer_desc.usage = wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
         buffer_desc.size = sizeof(Uniforms);
         buffer_desc.mappedAtCreation = false;
 
-        buffer = ctx.get_device().createBuffer(buffer_desc);
+        buffer = ctx.gpu.get_device().createBuffer(buffer_desc);
 
         wgpu::BindGroupEntry bg_entries[3];
         // texture entry
@@ -227,7 +231,7 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
         bg_desc.entryCount = 3;
         bg_desc.entries = bg_entries;
 
-        bind_group = ctx.get_device().createBindGroup(bg_desc);
+        bind_group = ctx.gpu.get_device().createBindGroup(bg_desc);
     }
 
     wgpu::raii::PipelineLayout make_pipeline_layout(
@@ -240,7 +244,7 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
         wgpu::PipelineLayoutDescriptor pipeline_layout_desc;
         pipeline_layout_desc.bindGroupLayoutCount = 2;
         pipeline_layout_desc.bindGroupLayouts = bgls;
-        pipeline_layout = ctx.get_device().createPipelineLayout(pipeline_layout_desc);
+        pipeline_layout = ctx.gpu.get_device().createPipelineLayout(pipeline_layout_desc);
 
         return pipeline_layout;
     }
@@ -263,4 +267,5 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
     void set_bind_groups(wgpu::RenderPassEncoder& pass_encoder) const {
         pass_encoder.setBindGroup(1, *bind_group, 0, nullptr);
     }
+
 };

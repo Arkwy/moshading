@@ -65,7 +65,7 @@ bool Renderer::init() {
     surfaceDescriptor.nextInChain = &fromWaylandSurface.chain;
     surfaceDescriptor.label = WGPUStringView{nullptr, WGPU_STRLEN};
 
-    this->surface = ctx.get_instance().createSurface(surfaceDescriptor);
+    this->surface = ctx.gpu.get_instance().createSurface(surfaceDescriptor);
     if (!*this->surface) {
         glfwDestroyWindow(this->window);
         glfwTerminate();
@@ -73,7 +73,7 @@ bool Renderer::init() {
     }
 
     wgpu::SurfaceCapabilities sc;
-    this->surface->getCapabilities(ctx.get_adapter(), &sc);
+    this->surface->getCapabilities(ctx.gpu.get_adapter(), &sc);
 
     bool format_found = false;
     for (size_t i = 0; i < sc.formatCount; i++) {
@@ -91,7 +91,7 @@ bool Renderer::init() {
     glfwGetFramebufferSize(this->window, &width, &height);
 
     this->surface_config.nextInChain = nullptr;
-    this->surface_config.device = ctx.get_device();
+    this->surface_config.device = ctx.gpu.get_device();
     this->surface_config.format = WGPUTextureFormat_RGBA8Unorm;
     this->surface_config.usage = WGPUTextureUsage_RenderAttachment;
     this->surface_config.presentMode = WGPUPresentMode_Fifo;
@@ -125,7 +125,7 @@ bool Renderer::init() {
     ImGui_ImplGlfw_InitForOther(this->window, true);
 
     ImGui_ImplWGPU_InitInfo init_info;
-    init_info.Device = ctx.get_device();
+    init_info.Device = ctx.gpu.get_device();
     init_info.NumFramesInFlight = 100;
     init_info.RenderTargetFormat = this->preferred_fmt;
     init_info.DepthStencilFormat = WGPUTextureFormat_Undefined;
@@ -157,7 +157,7 @@ void Renderer::main_loop() {
 #ifdef IMGUI_IMPL_WEBGPU_BACKEND_DAWN
     device->tick();
 #elifdef IMGUI_IMPL_WEBGPU_BACKEND_WGPU
-    ctx.get_device().poll(false, nullptr);
+    ctx.gpu.get_device().poll(false, nullptr);
 #endif
 
 
@@ -180,7 +180,7 @@ void Renderer::main_loop() {
     render_pass_desc.depthStencilAttachment = nullptr;
 
     wgpu::CommandEncoderDescriptor enc_desc = {};
-    wgpu::raii::CommandEncoder encoder = ctx.get_device().createCommandEncoder(enc_desc);
+    wgpu::raii::CommandEncoder encoder = ctx.gpu.get_device().createCommandEncoder(enc_desc);
 
     wgpu::raii::RenderPassEncoder pass = encoder->beginRenderPass(render_pass_desc);
 
@@ -189,7 +189,7 @@ void Renderer::main_loop() {
 
     wgpu::CommandBufferDescriptor cmd_buffer_desc = {};
     wgpu::raii::CommandBuffer cmd_buffer = encoder->finish(cmd_buffer_desc);
-    wgpu::raii::Queue queue = ctx.get_device().getQueue();
+    wgpu::raii::Queue queue = ctx.gpu.get_device().getQueue();
     queue->submit(1, &(*cmd_buffer));
 
 

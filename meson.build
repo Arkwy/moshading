@@ -9,7 +9,7 @@ embed_shaders = custom_target(
     'embed_shaders',
     output: ['shaders_code.cpp', 'shaders_code.hpp'],
     command: ['python', meson.current_source_dir() / 'utils/embed_shaders.py', '@OUTPUT@', meson.current_source_dir() / 'shaders/'],
-    # build_always_stale: true, # force rerun at each compilation
+    build_always_stale: true, # force rerun at each compilation
 )
 embed_shaders_dep = declare_dependency(sources: embed_shaders)
 
@@ -49,7 +49,7 @@ stb_files = [ stb_dir / 'stb_image.cpp' ]
 # Source files
 moshading_files = [
   'src/main.cpp',
-  'src/context.cpp',
+  'src/context/gpu.cpp',
   'src/renderer.cpp',
   'src/app.cpp',
   'src/file_loader.cpp',
