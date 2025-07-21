@@ -1,4 +1,71 @@
-#include <iostream>
+#ifdef __EMSCRIPTEN__
+#include "file_loader.hpp"
+
+#include <emscripten.h>
+#include <emscripten/bind.h>
+
+// Global pointer to current FileLoader instance (basic signal bridge)
+static FileLoader* current_loader = nullptr;
+
+// Called from JS when files are selected
+extern "C" void on_files_selected(const char* files_csv) {
+    if (!current_loader) return;
+
+    std::string csv(files_csv);
+    std::vector<std::string> results;
+    size_t start = 0;
+    size_t end;
+
+    while ((end = csv.find(';', start)) != std::string::npos) {
+        results.push_back(csv.substr(start, end - start));
+        start = end + 1;
+    }
+    if (start < csv.length()) results.push_back(csv.substr(start));
+
+    current_loader->selected_files = std::move(results);
+    current_loader->ready = true;
+}
+
+// JavaScript: opens file dialog and reports result back via on_files_selected
+EM_JS(void, open_file_dialog, (const char* accept), {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.accept = UTF8ToString(accept);
+    input.onchange = function(e) {
+        const files = Array.from(input.files).map(f => f.name).join(';');
+        ccall('on_files_selected', 'void', ['string'], [files]);
+    };
+    input.click();
+});
+
+template <>
+bool FileLoader::open_dialog<OpenType::Image>() {
+    if (current_loader != nullptr || ready) return false;
+
+    current_loader = this;
+    open_file_dialog(".png,.jpg,.jpeg,.bmp");
+    return true;
+}
+
+template <>
+bool FileLoader::open_dialog<OpenType::Video>() {
+    // static_assert(false, "Video loading not yet implemented for Web.");
+    return false;
+}
+
+bool FileLoader::check() {
+    return ready;
+}
+
+std::optional<std::vector<std::string>> FileLoader::get_result() {
+    if (!ready) return std::nullopt;
+    ready = false;
+    current_loader = nullptr;
+    return selected_files;
+}
+
+#else
 #include <optional>
 #include <vector>
 
@@ -19,85 +86,4 @@ std::optional<std::vector<std::string>> FileLoader::get_result() {
     }
     return std::nullopt;
 }
-
-// #ifdef __EMSCRIPTEN__
-
-// #include <emscripten.h>
-// #include <emscripten/bind.h>
-
-// // Callback from JS with file data
-// extern "C" void on_file_loaded(uintptr_t dataPtr, int size) { // , void* manager_ptr) {
-//     // ShaderManager manager = reinterpret_cast<uint8_t*>(manager_ptr)
-
-//     const uint8_t* data = reinterpret_cast<uint8_t*>(dataPtr);
-//     std::vector<uint8_t> file_data(data, data + size);
-
-//     std::cout << "File loaded in C++, size: " << size << " bytes" << std::endl;
-
-//     // Example: First 10 bytes
-//     for (int i = 0; i < std::min(size, 10); i++) {
-//         std::cout << std::hex << (int)file_data[i] << " ";
-//     }
-//     std::cout << std::endl;
-// }
-
-// // Trigger JS file dialog
-// EM_JS(void, open_file_dialog, (), {
-//   const input = document.createElement('input');
-//   input.type = 'file';
-//   input.onchange = e => {
-//     const file = e.target.files[0];
-//     const reader = new FileReader();
-
-//     reader.onload = function(evt) {
-//       const arrayBuffer = evt.target.result;
-//       const byteArray = new Uint8Array(arrayBuffer);
-
-//       // Allocate memory in the WASM heap
-//       const ptr = Module._malloc(byteArray.length);
-//       Module.HEAPU8.set(byteArray, ptr);
-
-//       // Call the C++ function with the pointer and size
-//       Module._on_file_loaded(ptr, byteArray.length);
-
-//       // Free memory later if you want to clean up
-//     };
-
-//     reader.readAsArrayBuffer(file);
-//   };
-
-//   input.click();
-// });
-
-// extern "C" void EMSCRIPTEN_KEEPALIVE launch_file_picker() {
-//     open_file_dialog();
-// }
-
-// #else
-
-// #include <portable-file-dialogs/portable-file-dialogs.h>
-//     #include <filesystem>
-
-// void open_file_dialog(ShaderManager& manager) {
-
-//     pfd::open_file file_dialog("Choose an Image File");
-//     // const char *filters[] = { "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif" };
-
-//     // const char *filename = tinyfd_openFileDialog(
-//     //     "Choose an Image File",
-//     //     "",                  // default path
-//     //     5,                   // number of filters
-//     //     filters,
-//     //     "Image files",
-//     //     0                    // allow multiple: 0 = no
-//     // );
-
-//     // if (!filename) {
-//     //     return;
-//     // }
-
-//     // manager.add_shader(Shader<ShaderKind::Image>(std::filesystem::path(filename).filename().stem().string(),
-//     filename));
-// }
-
-// #endif
+#endif

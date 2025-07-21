@@ -208,23 +208,23 @@ void ShaderManager::render() const {
     float start_x = ImGui::GetCursorPosX();
     float start_y = ImGui::GetCursorPosY();
 
-    ImGui::InvisibleButton("##render region", display_region, ImGuiButtonFlags_MouseButtonLeft);
+    // ImGui::InvisibleButton("##render region", display_region, ImGuiButtonFlags_MouseButtonLeft);
 
-    if (ImGui::IsItemHovered()) {
-        ImGuiIO& io = ImGui::GetIO();
+    // if (ImGui::IsItemHovered()) {
+    //     ImGuiIO& io = ImGui::GetIO();
 
-        // Zoom with mouse wheel
-        float zoom_delta = io.MouseWheel * 0.1f;
-        if (zoom_delta != 0.0f) {
-            display_state.zoom = std::clamp(display_state.zoom + zoom_delta, 0.1f, 100.0f);
-        }
+    //     // Zoom with mouse wheel
+    //     float zoom_delta = io.MouseWheel * 0.1f;
+    //     if (zoom_delta != 0.0f) {
+    //         display_state.zoom = std::clamp(display_state.zoom + zoom_delta, 0.1f, 100.0f);
+    //     }
 
-        // Pan with left-click drag
-        if (ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-            display_state.offset_x += io.MouseDelta.x / display_state.zoom;
-            display_state.offset_y += io.MouseDelta.y / display_state.zoom;
-        }
-    }
+    //     // Pan with left-click drag
+    //     if (ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+    //         display_state.offset_x += io.MouseDelta.x / display_state.zoom;
+    //         display_state.offset_y += io.MouseDelta.y / display_state.zoom;
+    //     }
+    // }
 
 
     ImVec2 display_dim;

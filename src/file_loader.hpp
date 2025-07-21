@@ -1,6 +1,9 @@
+// file_loader.hpp
 #pragma once
 
+#ifndef __EMSCRIPTEN__
 #include <portable-file-dialogs.h>
+#endif
 
 #include <optional>
 #include <string>
@@ -18,10 +21,16 @@ struct FileLoader {
     template <OpenType OT>
     bool open_dialog();
 
+#ifdef __EMSCRIPTEN__
+    bool ready = false;
+    std::vector<std::string> selected_files;
+#else
   private:
     std::optional<pfd::open_file> handle = std::nullopt;
+#endif
 };
 
+#ifndef __EMSCRIPTEN__
 template <OpenType OT>
 bool FileLoader::open_dialog() {
     if (handle.has_value()) return false;
@@ -35,3 +44,4 @@ bool FileLoader::open_dialog() {
 
     return true;
 }
+#endif

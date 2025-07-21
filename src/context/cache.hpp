@@ -5,10 +5,15 @@
 
 #include "gpu.hpp"
 #include "src/file_loader.hpp"
+#include "webgpu/webgpu.hpp"
 
 struct ShaderSource {
     const char* const code;
+#ifdef __EMSCRIPTEN__
+    const wgpu::ShaderModuleWGSLDescriptor source;
+#else
     const wgpu::ShaderSourceWGSL source;
+#endif
     const wgpu::ShaderModuleDescriptor module_desc;
 
     const wgpu::raii::ShaderModule compiled_module;
@@ -21,12 +26,14 @@ struct ShaderSource {
 
 
   private:
-    static const wgpu::ShaderSourceWGSL make_source(const char* const code) {
-        wgpu::ShaderSourceWGSL source;
 #ifdef __EMSCRIPTEN__
+    static const wgpu::ShaderModuleWGSLDescriptor make_source(const char* const code) {
+        wgpu::ShaderModuleWGSLDescriptor source;
         source.code = code;
         source.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
 #else
+    static const wgpu::ShaderSourceWGSL make_source(const char* const code) {
+        wgpu::ShaderSourceWGSL source;
         source.code.data = code;
         source.code.length = WGPU_STRLEN;
         source.chain.sType = WGPUSType_ShaderSourceWGSL;
@@ -36,7 +43,11 @@ struct ShaderSource {
         return source;
     }
 
+#ifdef __EMSCRIPTEN__
+    static const wgpu::ShaderModuleDescriptor make_module_desc(const wgpu::ShaderModuleWGSLDescriptor& source) {
+#else
     static const wgpu::ShaderModuleDescriptor make_module_desc(const wgpu::ShaderSourceWGSL& source) {
+#endif
         wgpu::ShaderModuleDescriptor module_desc;
         module_desc.nextInChain = &source.chain;
         return module_desc;

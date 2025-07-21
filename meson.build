@@ -1,4 +1,4 @@
-project('moshading', ['cpp', 'c'], default_options : ['cpp_std=c++26'])
+project('moshading', ['cpp', 'c']) #, default_options : ['cpp_std=c++26'])
 
 cpp = meson.get_compiler('cpp')
 is_wasm = cpp.get_id() == 'emscripten'
@@ -75,7 +75,7 @@ if is_wasm
         '-sNO_EXIT_RUNTIME=0',
         '-sASSERTIONS=1',
         '-sDISABLE_EXCEPTION_CATCHING=0',
-        '-sNO_FILESYSTEM=1',
+        # '-sNO_FILESYSTEM=1',
         # '--bind', # optional if using embind
     ]
 
@@ -93,7 +93,7 @@ if is_wasm
             embed_shaders_dep,
             embed_icons_dep,
         ],
-        cpp_args: ['-g', '-O3', '-fexceptions'],
+        cpp_args: ['-g', '-O3', '-fexceptions', '-std=c++26'],
         link_args: emscripten_flags,
         install: false,
     )
@@ -124,7 +124,7 @@ else
             wgpu_dep,
         ],
         link_args: ['-lwgpu_native'],
-        cpp_args: ['-g', '-O0', '-DIMGUI_IMPL_WEBGPU_BACKEND_WGPU', '-DWEBGPU_BACKEND_WGPU', '-ftemplate-backtrace-limit=0'],
+        cpp_args: ['-g', '-O0', '-DIMGUI_IMPL_WEBGPU_BACKEND_WGPU', '-DWEBGPU_BACKEND_WGPU', '-ftemplate-backtrace-limit=0', '-std=c++26'],
         install: false,
     )
 endif

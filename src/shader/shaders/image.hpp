@@ -139,14 +139,21 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
 
         // upload to GPU
         wgpu::raii::Queue queue = ctx.gpu.get_device().getQueue();
-
+#ifdef __EMSCRIPTEN__
+        wgpu::ImageCopyTexture tcti;
+#else
         wgpu::TexelCopyTextureInfo tcti;
+#endif
         tcti.texture = *texture;
         tcti.mipLevel = 0;
         tcti.origin = {0, 0, 0};
         tcti.aspect = wgpu::TextureAspect::All;
 
+#ifdef __EMSCRIPTEN__
+        wgpu::TextureDataLayout tcbl;
+#else
         wgpu::TexelCopyBufferLayout tcbl;
+#endif
         tcbl.bytesPerRow = base_width * 4;
         tcbl.rowsPerImage = base_height;
         tcbl.offset = 0;

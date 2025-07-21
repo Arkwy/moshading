@@ -59,7 +59,7 @@ bool Renderer::init() {
 
     // Get surface via emscripten API
     // wgpu_surface = wgpu_instance->createSurface(surface_desc);
-    surface = wgpu::raii::Surface(wgpuInstanceCreateSurface(ctx.get_instance(), &surface_desc));
+    surface = wgpu::raii::Surface(wgpuInstanceCreateSurface(ctx.gpu.get_instance(), &surface_desc));
 
     // Set preferred format (no adapter needed in emscripten)
     preferred_fmt = wgpuSurfaceGetPreferredFormat(*surface, nullptr);
@@ -70,7 +70,7 @@ bool Renderer::init() {
 
     // Configure surface
     surface_config.nextInChain = nullptr;
-    surface_config.device = ctx.get_device();
+    surface_config.device = ctx.gpu.get_device();
     surface_config.format = preferred_fmt;
     surface_config.usage = WGPUTextureUsage_RenderAttachment;
     surface_config.presentMode = WGPUPresentMode_Fifo;
@@ -103,7 +103,7 @@ bool Renderer::init() {
     ImGui_ImplGlfw_InstallEmscriptenCallbacks(window, "#canvas");
 
     ImGui_ImplWGPU_InitInfo init_info;
-    init_info.Device = ctx.get_device();
+    init_info.Device = ctx.gpu.get_device();
     init_info.NumFramesInFlight = 3;
     init_info.RenderTargetFormat = preferred_fmt;
     init_info.DepthStencilFormat = WGPUTextureFormat_Undefined;
@@ -154,7 +154,7 @@ void Renderer::main_loop() {
     render_pass_desc.depthStencilAttachment = nullptr;
 
     wgpu::CommandEncoderDescriptor enc_desc = {};
-    wgpu::raii::CommandEncoder encoder = ctx.get_device().createCommandEncoder(enc_desc);
+    wgpu::raii::CommandEncoder encoder = ctx.gpu.get_device().createCommandEncoder(enc_desc);
 
     wgpu::raii::RenderPassEncoder pass = encoder->beginRenderPass(render_pass_desc);
     ImGui_ImplWGPU_RenderDrawData(ImGui::GetDrawData(), *pass);
@@ -162,7 +162,7 @@ void Renderer::main_loop() {
 
     wgpu::CommandBufferDescriptor cmd_buffer_desc = {};
     wgpu::raii::CommandBuffer cmd_buffer = encoder->finish(cmd_buffer_desc);
-    wgpu::raii::Queue queue = ctx.get_device().getQueue();
+    wgpu::raii::Queue queue = ctx.gpu.get_device().getQueue();
     queue->submit(1, &(*cmd_buffer));
 }
 
