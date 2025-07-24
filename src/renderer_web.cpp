@@ -128,9 +128,9 @@ void Renderer::main_loop() {
     ImGui::NewFrame();
 
     // std::cout << &this->app << std::endl;
-    display_app();
-    // ImGui::Begin("some window");
-    // ImGui::End();
+    // display_app();
+    ImGui::Begin("some window");
+    ImGui::End();
 
     // Rendering
     ImGui::Render();

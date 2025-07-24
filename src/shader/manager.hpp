@@ -109,6 +109,7 @@ struct ShaderManager {
                 ImGui::Text("%s", selection.value().c_str());
             }
             if (ImGui::Button("Choose file")) {
+                Log::warn("opening file dialog ?");
                 if (!file_loader.open_dialog<OpenType::Image>()) {
                     Log::warn("A dialog is already opened, file opening aborted.");
                 }
@@ -118,7 +119,7 @@ struct ShaderManager {
                 std::vector<std::string> file_paths = file_loader.get_result().value();
                 if (file_paths.size()) {
                     if (file_paths.size() > 1) {
-                        Log::error("More than in image file returned.");
+                        Log::error("More than one image file returned.");
                     }
                     selection = file_paths[0];
                     Log::log("{}", selection.value());

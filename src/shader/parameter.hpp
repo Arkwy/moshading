@@ -112,7 +112,7 @@ struct Float {
                     speed[i],
                     &min[i],
                     &max[i],
-                    field_names.has_value() ? std::format("{}: %.3f", field_names.value()[i]).c_str() : "%.3f",
+                    field_names.has_value() ? std::format("{}: %.2f", field_names.value()[i]).c_str() : "%.2f",
                     0
                 );
                 ImGui::PopID();

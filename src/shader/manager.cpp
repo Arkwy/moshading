@@ -247,6 +247,7 @@ void ShaderManager::render() const {
     ));
 
 
+    Log::log("should display image");
     ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<WGPUTextureView>(tv)), display_dim);
 }
 

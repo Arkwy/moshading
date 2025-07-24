@@ -69,13 +69,13 @@ if is_wasm
         '-sUSE_GLFW=3',
         '-sUSE_WEBGPU=1',
         '-sEXPORT_ALL=1', # TODO remove in release build
-        # '-sASYNCIFY',
+        '-sASYNCIFY',
         '-sWASM=1',
         '-sALLOW_MEMORY_GROWTH=1',
         '-sNO_EXIT_RUNTIME=0',
         '-sASSERTIONS=1',
         '-sDISABLE_EXCEPTION_CATCHING=0',
-        # '-sNO_FILESYSTEM=1',
+        '-sNO_FILESYSTEM=1',
         # '--bind', # optional if using embind
     ]
 
@@ -93,7 +93,7 @@ if is_wasm
             embed_shaders_dep,
             embed_icons_dep,
         ],
-        cpp_args: ['-g', '-O3', '-fexceptions', '-std=c++26'],
+        cpp_args: ['-g', '-O2', '-fexceptions', '-std=c++20'],
         link_args: emscripten_flags,
         install: false,
     )

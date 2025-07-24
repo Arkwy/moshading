@@ -34,6 +34,7 @@
     {
       overlays.default = final: prev: {
         wgpu-native = prev.wgpu-native.overrideAttrs (oldAttrs: {
+          # create pkg config for wgpu-native allowing simpler meason.build file
           postInstall =
             (oldAttrs.postInstall or "")
             + ''
@@ -128,7 +129,7 @@
         }
       );
 
-      packages = forEachSupportedSystem (
+      packages = forEachSupportedSystem ( # TODO separate linux and macos dependancies
         { pkgs }:
         let
           pname = "moshading";
@@ -173,6 +174,7 @@
               cp build/moshading $out/bin/moshading-raw
 
               makeWrapper $out/bin/moshading-raw $out/bin/moshading \
+                  --prefix PATH : ${pkgs.zenity}/bin \
                   --set LD_LIBRARY_PATH ${
                     with pkgs;
                     lib.makeLibraryPath [
