@@ -102,14 +102,14 @@ bool Box2D::display() const {
     }
 
     // control logic
-    // ImGui::InvisibleButton("pad", pad_size);
-    // bool is_active = ImGui::IsItemActive();
+    ImGui::InvisibleButton("pad", pad_size);
+    bool is_active = ImGui::IsItemActive();
 
-    // if (is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-    //     ImVec2 delta = ImGui::GetIO().MouseDelta;
-    //     state[0] += delta.x / scale;
-    //     state[1] += delta.y / scale;
-    // }
+    if (is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+        ImVec2 delta = ImGui::GetIO().MouseDelta;
+        state[0] += delta.x / scale;
+        state[1] += delta.y / scale;
+    }
     return change;
 }
 

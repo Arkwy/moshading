@@ -9,6 +9,7 @@
 #include <emscripten/html5_webgpu.h>
 
 #include "renderer.hpp"
+#include "src/log.hpp"
 
 
 void glfw_error_callback(int error, const char* description) {
@@ -127,12 +128,9 @@ void Renderer::main_loop() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    // std::cout << &this->app << std::endl;
-    // display_app();
-    ImGui::Begin("some window");
-    ImGui::End();
+    display_app();
 
-    // Rendering
+    // // Rendering
     ImGui::Render();
 
     wgpu::SurfaceTexture surface_texture;

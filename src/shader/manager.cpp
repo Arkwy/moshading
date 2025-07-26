@@ -7,8 +7,6 @@
 #include <memory>
 #include <webgpu/webgpu.hpp>
 
-#include "src/file_loader.hpp"
-#include "src/log.hpp"
 #include "src/shader/shader.hpp"
 
 ShaderManager::ShaderManager(Context& ctx) : ctx(ctx), shaders() {
@@ -28,8 +26,8 @@ void ShaderManager::init() {
     texture_desc.label.data = "shader_render";
     texture_desc.label.length = WGPU_STRLEN;
 #endif
-    texture_desc.size.width = ctx.rendering.dim[0];
-    texture_desc.size.height = ctx.rendering.dim[1];
+    texture_desc.size.width = ctx.render_target.dim[0];
+    texture_desc.size.height = ctx.render_target.dim[1];
     texture_desc.size.depthOrArrayLayers = 1;
     texture_desc.format = wgpu::TextureFormat::RGBA8Unorm;
     texture_desc.sampleCount = 1;
@@ -124,16 +122,16 @@ void ShaderManager::init() {
     bind_group_B = ctx.gpu.get_device().createBindGroup(bg_B_desc);
 
     for (std::unique_ptr<ShaderUnion>& s : shaders) {
-        s->apply([&](auto& s) { s.init_pipeline(ctx, *default_bind_group_layout); });
+        s->apply([&](auto& s) { s.init_pipeline(*default_bind_group_layout); });
         if (s->is_current<Shader<ShaderKind::Image>>()) {
-            s->get<Shader<ShaderKind::Image>>().set_render_dim(ctx.rendering.dim);
+            s->get<Shader<ShaderKind::Image>>().set_render_dim(ctx.render_target.dim);
         }
     }
 }
 
 
 void ShaderManager::resize(unsigned int new_width, unsigned int new_height) {
-    ctx.rendering.dim = std::array<unsigned int, 2>({new_width, new_height});
+    ctx.render_target.dim = std::array<unsigned int, 2>({new_width, new_height});
     init();
 }
 
@@ -148,8 +146,8 @@ void ShaderManager::reorder_element(size_t index, size_t new_index) {
 
 
 void ShaderManager::render() const {
-    unsigned int& width = ctx.rendering.dim[0];
-    unsigned int& height = ctx.rendering.dim[1];
+    unsigned int& width = ctx.render_target.dim[0];
+    unsigned int& height = ctx.render_target.dim[1];
 
     assert(*texture_view_A && *texture_view_B);
     wgpu::TextureView tv = *texture_view_A;
@@ -208,23 +206,25 @@ void ShaderManager::render() const {
     float start_x = ImGui::GetCursorPosX();
     float start_y = ImGui::GetCursorPosY();
 
-    // ImGui::InvisibleButton("##render region", display_region, ImGuiButtonFlags_MouseButtonLeft);
+    if (display_region.x > 0 && display_region.y > 0) { // fix issue with 1st frames on web
+        ImGui::InvisibleButton("##render region", display_region, ImGuiButtonFlags_MouseButtonLeft);
 
-    // if (ImGui::IsItemHovered()) {
-    //     ImGuiIO& io = ImGui::GetIO();
+        if (ImGui::IsItemHovered()) {
+            ImGuiIO& io = ImGui::GetIO();
 
-    //     // Zoom with mouse wheel
-    //     float zoom_delta = io.MouseWheel * 0.1f;
-    //     if (zoom_delta != 0.0f) {
-    //         display_state.zoom = std::clamp(display_state.zoom + zoom_delta, 0.1f, 100.0f);
-    //     }
+            // Zoom with mouse wheel
+            float zoom_delta = io.MouseWheel * 0.1f;
+            if (zoom_delta != 0.0f) {
+                display_state.zoom = std::clamp(display_state.zoom + zoom_delta, 0.1f, 100.0f);
+            }
 
-    //     // Pan with left-click drag
-    //     if (ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-    //         display_state.offset_x += io.MouseDelta.x / display_state.zoom;
-    //         display_state.offset_y += io.MouseDelta.y / display_state.zoom;
-    //     }
-    // }
+            // Pan with left-click drag
+            if (ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+                display_state.offset_x += io.MouseDelta.x / display_state.zoom;
+                display_state.offset_y += io.MouseDelta.y / display_state.zoom;
+            }
+        }
+    }
 
 
     ImVec2 display_dim;
@@ -246,8 +246,6 @@ void ShaderManager::render() const {
         -(display_dim.y - display_region.y) * 0.5 + start_y + display_state.offset_y * display_state.zoom
     ));
 
-
-    Log::log("should display image");
     ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<WGPUTextureView>(tv)), display_dim);
 }
 
@@ -333,7 +331,7 @@ void ShaderManager::display() {
     ImGui::BeginChild("add_shader");
     ImGui::Text("Select shader to add");
 #define X(name) #name
-    std::vector<std::string> shaders = {SHADER_VARIANTS};
+    std::vector<std::string> shaders = {SHADER_KINDS};
 #undef X
     bool change = ImGui::BeginCombo("shader", shaders[selected_shader].c_str());
     if (change) {
@@ -350,5 +348,4 @@ void ShaderManager::display() {
     }
     creation_dialog(static_cast<ShaderKind>(selected_shader));
     ImGui::EndChild();
-
 }

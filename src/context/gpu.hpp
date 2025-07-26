@@ -3,14 +3,19 @@
 #include <webgpu/webgpu-raii.hpp>
 
 struct GPU {
+    GPU() {
+        init();
+    }
+
+    bool is_initialized() const;
+
     const wgpu::Instance& get_instance() const;
 #ifndef __EMSCRIPEN__
     const wgpu::Adapter& get_adapter() const;
 #endif
     const wgpu::Device& get_device() const;
-    bool init();
 
-private:
+  private:
     bool initialized = false;
 
     wgpu::raii::Instance instance;
@@ -18,4 +23,6 @@ private:
     wgpu::raii::Adapter adapter;
 #endif
     wgpu::raii::Device device;
+
+    bool init();
 };

@@ -13,7 +13,7 @@
 template <>
 struct Shader<ShaderKind::Noise> : public ShaderBase<Shader<ShaderKind::Noise>> {
     Shader(const std::string& name, const Context& ctx)
-        : ShaderBase<Shader<ShaderKind::Noise>>(name, ctx.cache.get(fullscreen_vertex), ctx.cache.get(noise), ctx) {}
+        : ShaderBase<Shader<ShaderKind::Noise>>(name, ctx.shader_source_cache.get(fullscreen_vertex), ctx.shader_source_cache.get(noise), ctx) {}
 
     enum class Mode : int {
         Grey,
@@ -50,7 +50,7 @@ struct Shader<ShaderKind::Noise> : public ShaderBase<Shader<ShaderKind::Noise>> 
     wgpu::raii::Buffer buffer;
     wgpu::raii::BindGroup bind_group;
 
-    void init(const Context& ctx) {
+    void init() {
         wgpu::BindGroupLayoutEntry bgl_entry;
         bgl_entry.binding = 0;
         bgl_entry.visibility = wgpu::ShaderStage::Fragment;

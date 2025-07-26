@@ -119,11 +119,11 @@ struct Shader<ShaderKind::ChromaticAbberation> : public ShaderBase<Shader<Shader
 
 
     Shader(const std::string& name, const Context& ctx)
-        : ShaderBase<Shader<ShaderKind::ChromaticAbberation>>(name, ctx.cache.get(fullscreen_vertex), ctx.cache.get(chromatic_aberration), ctx),
+        : ShaderBase<Shader<ShaderKind::ChromaticAbberation>>(name, ctx.shader_source_cache.get(fullscreen_vertex), ctx.shader_source_cache.get(chromatic_aberration), ctx),
           parameters(init_parameters(uniforms)) {}
 
 
-    void init(const Context& ctx) {
+    void init() {
         wgpu::BindGroupLayoutEntry bgl_entry;
         bgl_entry.binding = 0;
         bgl_entry.visibility = wgpu::ShaderStage::Fragment;

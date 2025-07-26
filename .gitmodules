@@ -10,3 +10,6 @@
 [submodule "Font-Awesome"]
 	path = Font-Awesome
 	url = https://github.com/FortAwesome/Font-Awesome.git
+[submodule "stb"]
+	path = stb
+	url = https://github.com/nothings/stb.git

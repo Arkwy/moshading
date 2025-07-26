@@ -4,7 +4,6 @@
 #include <webgpu/webgpu-raii.hpp>
 
 #include "gpu.hpp"
-#include "src/file_loader.hpp"
 #include "webgpu/webgpu.hpp"
 
 struct ShaderSource {
@@ -61,10 +60,9 @@ struct ShaderSource {
 
 struct ShaderSourceCache {
     mutable std::unordered_map<const char*, std::unique_ptr<ShaderSource>> sources;
-    FileLoader file_loader;
     const GPU& gpu;
 
-    ShaderSourceCache(const GPU& gpu) : sources(), file_loader(), gpu(gpu) {}
+    ShaderSourceCache(const GPU& gpu) : sources(), gpu(gpu) {}
 
     const ShaderSource& get(const char* const source_code) const {
         if (!sources.contains(source_code)) {

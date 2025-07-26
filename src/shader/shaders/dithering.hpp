@@ -12,7 +12,7 @@
 template <>
 struct Shader<ShaderKind::Dithering> : public ShaderBase<Shader<ShaderKind::Dithering>> {
     Shader(const std::string& name, const Context& ctx)
-        : ShaderBase<Shader<ShaderKind::Dithering>>(name, ctx.cache.get(fullscreen_vertex), ctx.cache.get(dithering), ctx) {}
+        : ShaderBase<Shader<ShaderKind::Dithering>>(name, ctx.shader_source_cache.get(fullscreen_vertex), ctx.shader_source_cache.get(dithering), ctx) {}
 
     enum class Mode : int {
         Threshold, 
@@ -53,7 +53,7 @@ struct Shader<ShaderKind::Dithering> : public ShaderBase<Shader<ShaderKind::Dith
     wgpu::raii::Buffer buffer;
     wgpu::raii::BindGroup bind_group;
 
-    void init(const Context& ctx) {
+    void init() {
 
         wgpu::BindGroupLayoutEntry bgl_entry;
         bgl_entry.binding = 0;

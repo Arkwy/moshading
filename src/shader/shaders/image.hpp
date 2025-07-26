@@ -4,19 +4,12 @@
 #include <stb/stb_image.h>
 
 #include <cmath>
-#include <cstdint>
-#include <filesystem>
-#include <memory>
+#include <cstddef>
 #include <optional>
-#include <stdexcept>
-#include <valarray>
 #include <webgpu/webgpu-raii.hpp>
 
 #include "shaders_code.hpp"
 #include "src/context.hpp"
-#include "src/file_loader.hpp"
-#include "src/log.hpp"
-#include "src/shader/manager.hpp"
 #include "src/shader/parameter.hpp"
 #include "src/shader/shader.hpp"
 #include "webgpu/webgpu.hpp"
@@ -24,16 +17,7 @@
 
 template <>
 struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> {
-    const std::string image_path;
-
-    struct StbiDeleter {
-        void operator()(uint8_t* data) const {
-            stbi_image_free(data);
-        }
-    };
-    using StbiPtr = std::unique_ptr<uint8_t, StbiDeleter>;
-    StbiPtr image_data;
-
+    constexpr static const ResourceKind RESOURCES[1] = {ResourceKind::Image};
     struct alignas(16) Uniforms {
         union {
             struct {
@@ -54,11 +38,9 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
         };
     };
 
-    Uniforms uniforms = {{{0.0, 0.0, 0.0, 0.0, 0.0, 1.0}}};
+    const size_t image_index;
 
-    wgpu::raii::Sampler sampler;
-    wgpu::raii::Texture texture;
-    wgpu::raii::TextureView texture_view;
+    Uniforms uniforms = {{{0.0, 0.0, 0.0, 0.0, 0.0, 1.0}}};
 
     wgpu::raii::BindGroupLayout bind_group_layout;
     wgpu::raii::Buffer buffer;
@@ -82,10 +64,14 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
 
     Parameters parameters;
 
-    Shader(const std::string& name, const std::string& image_path, const Context& ctx)
-        : ShaderBase<Shader<ShaderKind::Image>>(name, ctx.cache.get(fullscreen_vertex), ctx.cache.get(image), ctx),
-          image_path(image_path),
-          parameters(init_parameters(uniforms, render_dim)) {}
+    Shader(const std::string& name, const size_t& image_index, const Context& ctx)
+        : ShaderBase<Shader<ShaderKind::Image>>(
+              name, ctx.shader_source_cache.get(fullscreen_vertex), ctx.shader_source_cache.get(image), ctx
+          ),
+          image_index(image_index),
+          parameters(init_parameters(uniforms, render_dim)) {
+        ctx.resource_manager.get_image(image_index).subscribe([&](){update_bind_group();});
+    }
 
 
     static Parameters init_parameters(Uniforms& uniforms, const std::array<unsigned int, 2>& render_dim) {
@@ -108,87 +94,8 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
     }
 
 
-    void init(const Context& ctx) {
-        set_render_dim(ctx.rendering.dim);
-        std::get<2>(parameters.widgets).max = {static_cast<float>(render_dim[0]), static_cast<float>(render_dim[1])};
-
-        // loading image
-        uint8_t* _image_data = stbi_load(image_path.c_str(), &base_width, &base_height, nullptr, 4);
-
-        if (!_image_data) {
-            throw std::runtime_error("Could not load image.");
-            // TODO implement better error handling
-        }
-        image_data = StbiPtr(_image_data);
-
-        uniforms.size_x = static_cast<float>(base_width);
-        uniforms.size_y = static_cast<float>(base_height);
-
-        // create texture
-        wgpu::TextureDescriptor tex_desc;
-        tex_desc.size = {static_cast<uint32_t>(base_width), static_cast<uint32_t>(base_height), 1};
-        tex_desc.format = wgpu::TextureFormat::RGBA8Unorm;
-        tex_desc.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
-        tex_desc.dimension = wgpu::TextureDimension::_2D;
-        tex_desc.mipLevelCount = 1;
-        tex_desc.sampleCount = 1;
-        tex_desc.viewFormatCount = 0;
-        tex_desc.viewFormats = nullptr;
-
-        texture = ctx.gpu.get_device().createTexture(tex_desc);
-
-        // upload to GPU
-        wgpu::raii::Queue queue = ctx.gpu.get_device().getQueue();
-#ifdef __EMSCRIPTEN__
-        wgpu::ImageCopyTexture tcti;
-#else
-        wgpu::TexelCopyTextureInfo tcti;
-#endif
-        tcti.texture = *texture;
-        tcti.mipLevel = 0;
-        tcti.origin = {0, 0, 0};
-        tcti.aspect = wgpu::TextureAspect::All;
-
-#ifdef __EMSCRIPTEN__
-        wgpu::TextureDataLayout tcbl;
-#else
-        wgpu::TexelCopyBufferLayout tcbl;
-#endif
-        tcbl.bytesPerRow = base_width * 4;
-        tcbl.rowsPerImage = base_height;
-        tcbl.offset = 0;
-
-        wgpu::Extent3D e3d;
-        e3d.width = base_width;
-        e3d.height = base_height;
-        e3d.depthOrArrayLayers = 1;
-
-        queue->writeTexture(tcti, image_data.get(), base_height * base_width * 4, tcbl, e3d);
-
-        // create texture and sampler binding
-        wgpu::TextureViewDescriptor tex_view_desc = {};
-        tex_view_desc.format = wgpu::TextureFormat::RGBA8Unorm;
-        tex_view_desc.dimension = wgpu::TextureViewDimension::_2D;
-        tex_view_desc.mipLevelCount = 1;
-        tex_view_desc.baseMipLevel = 0;
-        tex_view_desc.arrayLayerCount = 1;
-        tex_view_desc.baseArrayLayer = 0;
-        tex_view_desc.aspect = wgpu::TextureAspect::All;
-
-        texture_view = texture->createView(tex_view_desc);
-
-
-        wgpu::SamplerDescriptor sampler_desc = {};
-        sampler_desc.addressModeU = wgpu::AddressMode::ClampToEdge;
-        sampler_desc.addressModeV = wgpu::AddressMode::ClampToEdge;
-        sampler_desc.addressModeW = wgpu::AddressMode::ClampToEdge;
-        sampler_desc.magFilter = wgpu::FilterMode::Linear;
-        sampler_desc.minFilter = wgpu::FilterMode::Linear;
-        sampler_desc.mipmapFilter = wgpu::MipmapFilterMode::Nearest;
-        sampler_desc.maxAnisotropy = 1;
-
-        sampler = ctx.gpu.get_device().createSampler(sampler_desc);
-
+    void init() {
+        set_render_dim(ctx.render_target.dim);
 
         wgpu::BindGroupLayoutEntry bgl_entries[3];
         // texture entry
@@ -211,6 +118,7 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
         wgpu::BindGroupLayoutDescriptor bgl_desc;
         bgl_desc.entryCount = 3;
         bgl_desc.entries = bgl_entries;
+
         bind_group_layout = ctx.gpu.get_device().createBindGroupLayout(bgl_desc);
 
         wgpu::BufferDescriptor buffer_desc;
@@ -220,13 +128,18 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
 
         buffer = ctx.gpu.get_device().createBuffer(buffer_desc);
 
+        update_bind_group();
+    }
+
+
+    void update_bind_group() {
         wgpu::BindGroupEntry bg_entries[3];
         // texture entry
         bg_entries[0].binding = 0;
-        bg_entries[0].textureView = *texture_view;
+        bg_entries[0].textureView = *ctx.resource_manager.get_image(image_index).texture_view;
         // sampler entry
         bg_entries[1].binding = 1;
-        bg_entries[1].sampler = *sampler;
+        bg_entries[1].sampler = *ctx.resource_manager.default_texture_sampler;
         // uniforms entry
         bg_entries[2].binding = 2;
         bg_entries[2].buffer = *buffer;
@@ -274,5 +187,4 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
     void set_bind_groups(wgpu::RenderPassEncoder& pass_encoder) const {
         pass_encoder.setBindGroup(1, *bind_group, 0, nullptr);
     }
-
 };

@@ -24,7 +24,7 @@ int main() {
 
 
     Context ctx;
-    if (!ctx.gpu.init()) {
+    if (!ctx.gpu.is_initialized()) {
         return 1;
     }
 

@@ -3,14 +3,15 @@
 #include <webgpu/webgpu-raii.hpp>
 
 #include "context/gpu.hpp"
-#include "context/rendering.hpp"
-#include "context/cache.hpp"
-#include "src/file_loader.hpp"
+#include "context/render_target.hpp"
+#include "context/resource.hpp"
+#include "context/shader_source.hpp"
 
 struct Context {
     GPU gpu;
-    Rendering rendering;
-    ShaderSourceCache cache;
+    RenderTarget render_target;
+    ShaderSourceCache shader_source_cache;
+    ResourceManager resource_manager;
 
-    Context(): gpu(), rendering(), cache(gpu) {}
+    Context() : gpu(), render_target(), shader_source_cache(gpu), resource_manager(gpu) {}
 };

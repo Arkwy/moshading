@@ -8,15 +8,17 @@
 #include "src/context.hpp"
 #include "src/tagged_union.hpp"
 
-#define SHADER_VARIANTS X(ChromaticAbberation), X(Image), X(Noise), X(Dithering)
+#define SHADER_KINDS X(ChromaticAbberation), X(Image), X(Noise), X(Dithering)
 
 #define X(name) name
-enum class ShaderKind { SHADER_VARIANTS };
+enum class ShaderKind { SHADER_KINDS };
 #undef X
 
 
 template <typename Derived>
 struct ShaderBase {
+    constexpr static const ResourceKind RESOURCES[0] = {};
+    const Context& ctx;
     const std::string name;
     const ShaderSource& vertex_source;
     const ShaderSource& frag_source;
@@ -24,7 +26,7 @@ struct ShaderBase {
     ShaderBase(const ShaderBase<Derived>& sb) = delete;
     ShaderBase(ShaderBase<Derived>&& sb) = delete;
 
-    void init_pipeline(const Context& ctx, const wgpu::BindGroupLayout& default_bind_group_layout) {
+    void init_pipeline(const wgpu::BindGroupLayout& default_bind_group_layout) {
         wgpu::VertexState vertex_state;
         vertex_state.module = *vertex_source.compiled_module;
 #ifdef __EMSCRIPTEN__
@@ -85,7 +87,7 @@ struct ShaderBase {
     ShaderBase(
         const std::string& name, const ShaderSource& vertex_source, const ShaderSource& frag_source, const Context& ctx
     )
-        : name(name), vertex_source(vertex_source), frag_source(frag_source) {}
+        : ctx(ctx), name(name), vertex_source(vertex_source), frag_source(frag_source) {}
 
     wgpu::raii::PipelineLayout make_pipeline_layout(
         const Context& ctx, const wgpu::BindGroupLayout& default_bind_group_layout
@@ -103,7 +105,7 @@ struct Shader : public ShaderBase<Shader<K>> {
         : ShaderBase<Shader<K>>(name, vertex_source, frag_source, ctx) {}
 
     // functions to template specialize
-    void init(const Context& ctx);
+    void init();
     void display();
     void write_buffers(wgpu::Queue& queue) const;
     wgpu::raii::PipelineLayout make_pipeline_layout(
@@ -115,7 +117,7 @@ struct Shader : public ShaderBase<Shader<K>> {
 };
 
 template <ShaderKind K>
-void Shader<K>::init(const Context& ctx) {}
+void Shader<K>::init() {}
 
 template <ShaderKind K>
 void Shader<K>::reset() {}
@@ -149,7 +151,7 @@ void Shader<K>::set_bind_groups(wgpu::RenderPassEncoder& pass_encoder) const {}
 
 
 #define X(name) Shader<ShaderKind::name>
-using ShaderUnion = TaggedUnion<SHADER_VARIANTS>;
+using ShaderUnion = TaggedUnion<SHADER_KINDS>;
 #undef X
 
 

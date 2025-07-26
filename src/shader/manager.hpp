@@ -5,17 +5,18 @@
 #include <memory>
 #include <optional>
 #include <thread>
+#include <tuple>
 #include <utility>
 #include <vector>
 #include <webgpu/webgpu-raii.hpp>
 
+#include "imgui.h"
 #include "shader.hpp"
 #include "shaders/chromatic_aberration.hpp"
 #include "shaders/dithering.hpp"
 #include "shaders/image.hpp"
 #include "shaders/noise.hpp"
 #include "src/context.hpp"
-#include "src/file_loader.hpp"
 #include "src/log.hpp"
 
 struct ShaderManager {
@@ -35,16 +36,16 @@ struct ShaderManager {
         shaders.push_back(std::make_unique<ShaderUnion>());
         auto& shader = shaders[shaders.size() - 1];
         shader->set<S>(args...);
-        shader->apply([&](auto& s) { s.init(ctx); });
-        shader->apply([&](auto& s) { s.init_pipeline(ctx, *default_bind_group_layout); });
+        shader->apply([&](auto& s) { s.init(); });
+        shader->apply([&](auto& s) { s.init_pipeline(*default_bind_group_layout); });
     }
 
     void add_shader(std::unique_ptr<ShaderUnion>&& shader_ptr) {  // TODO move to private when ui is here
         assert(shader_ptr.get()->tag != ShaderUnion::Tag::None);
         shaders.push_back(std::forward<std::unique_ptr<ShaderUnion>>(shader_ptr));
         auto& shader = shaders[shaders.size() - 1];
-        shader->apply([&](auto& s) { s.init(ctx); });
-        shader->apply([&](auto& s) { s.init_pipeline(ctx, *default_bind_group_layout); });
+        shader->apply([&](auto& s) { s.init(); });
+        shader->apply([&](auto& s) { s.init_pipeline(*default_bind_group_layout); });
     }
 
     void reorder_element(size_t index, size_t new_index);  // TODO move to private when ui is here
@@ -65,7 +66,6 @@ struct ShaderManager {
 
     mutable DisplayState display_state{1.0, 0.0, 0.0};
 
-    FileLoader file_loader;
     size_t selected_shader = 0;
     bool adding_shader = false;
 
@@ -94,13 +94,13 @@ struct ShaderManager {
     [&]() {                                                   \
         if (try_creation_dialog<ShaderKind::name>(k)) return; \
     }()
-        (SHADER_VARIANTS);
+        (SHADER_KINDS);
 #undef X
     }
 
 
     template <ShaderKind K>
-        requires(K == ShaderKind::Image)
+    requires(sizeof(Shader<K>::RESOURCES) != 0)
     bool try_creation_dialog(ShaderKind k) {
         if (k == K) {
             static std::optional<std::string> selection = std::nullopt;
@@ -108,41 +108,27 @@ struct ShaderManager {
             if (selection.has_value()) {
                 ImGui::Text("%s", selection.value().c_str());
             }
-            if (ImGui::Button("Choose file")) {
-                Log::warn("opening file dialog ?");
-                if (!file_loader.open_dialog<OpenType::Image>()) {
-                    Log::warn("A dialog is already opened, file opening aborted.");
-                }
-            }
 
-            if (file_loader.check()) {
-                std::vector<std::string> file_paths = file_loader.get_result().value();
-                if (file_paths.size()) {
-                    if (file_paths.size() > 1) {
-                        Log::error("More than one image file returned.");
-                    }
-                    selection = file_paths[0];
-                    Log::log("{}", selection.value());
-                }
-            }
+            // TODO selections logic
+            ImGui::Text("it needs some ressources");
 
-            if (!selection.has_value()) {
-                ImGui::BeginDisabled();
-            }
-            if (ImGui::Button("Add")) {
-                assert(selection.has_value());
-                add_shader<Shader<K>>(
-                    std::filesystem::path(selection.value()).filename().stem().string(),
-                    selection.value(),
-                    ctx
-                );
-                adding_shader = false;
-                selection = std::nullopt;
-                return true;
-            }
-            if (!selection.has_value()) {
-                ImGui::EndDisabled();
-            }
+            // if (!selection.has_value()) {
+            //     ImGui::BeginDisabled();
+            // }
+            // if (ImGui::Button("Add")) {
+            //     assert(selection.has_value());
+            //     add_shader<Shader<K>>(
+            //         std::filesystem::path(selection.value()).filename().stem().string(),
+            //         selection.value(),
+            //         ctx
+            //     );
+            //     adding_shader = false;
+            //     selection = std::nullopt;
+            //     return true;
+            // }
+            // if (!selection.has_value()) {
+            //     ImGui::EndDisabled();
+            // }
             return true;
         }
         return false;
@@ -150,7 +136,7 @@ struct ShaderManager {
 
 
     template <ShaderKind K>
-        requires(K != ShaderKind::Image)
+        requires(sizeof(Shader<K>::RESOURCES) == 0)
     bool try_creation_dialog(ShaderKind k) {
         if (k == K) {
             if (ImGui::Button("Add")) {

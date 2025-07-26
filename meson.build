@@ -9,7 +9,7 @@ embed_shaders = custom_target(
     'embed_shaders',
     output: ['shaders_code.cpp', 'shaders_code.hpp'],
     command: ['python', meson.current_source_dir() / 'utils/embed_shaders.py', '@OUTPUT@', meson.current_source_dir() / 'shaders/'],
-    build_always_stale: true, # force rerun at each compilation
+    # build_always_stale: true, # force rerun at each compilation
 )
 embed_shaders_dep = declare_dependency(sources: embed_shaders)
 
@@ -44,7 +44,7 @@ icon_headers_dir = 'IconFontCppHeaders'
 
 # stb
 stb_dir = 'stb'
-stb_files = [ stb_dir / 'stb_image.cpp' ]
+stb_files = [ 'src/stb_image.cpp' ]
 
 # Source files
 moshading_files = [
@@ -75,7 +75,8 @@ if is_wasm
         '-sNO_EXIT_RUNTIME=0',
         '-sASSERTIONS=1',
         '-sDISABLE_EXCEPTION_CATCHING=0',
-        '-sNO_FILESYSTEM=1',
+        # '-sNO_FILESYSTEM=1',
+        '-sEXPORTED_RUNTIME_METHODS=ccall'
         # '--bind', # optional if using embind
     ]
 
@@ -93,7 +94,7 @@ if is_wasm
             embed_shaders_dep,
             embed_icons_dep,
         ],
-        cpp_args: ['-g', '-O2', '-fexceptions', '-std=c++20'],
+        cpp_args: ['-g', '-O3', '-fexceptions', '-std=c++26'],
         link_args: emscripten_flags,
         install: false,
     )
