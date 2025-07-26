@@ -44,7 +44,7 @@ icon_headers_dir = 'IconFontCppHeaders'
 
 # stb
 stb_dir = 'stb'
-stb_files = [ 'src/stb_image.cpp' ]
+stb_files = [ stb_dir / 'stb_image.cpp' ]
 
 # Source files
 moshading_files = [
