@@ -14,7 +14,7 @@
 
 
 void glfw_error_callback(int error, const char* description) {
-    printf("GLFW Error %d: %s\n", error, description);
+    Log::error("GLFW Error code {}: {}", error, description);
 }
 
 
@@ -37,23 +37,23 @@ bool Renderer::init() {
     // This needs to be done explicitly later.
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-    this->window = glfwCreateWindow(
+    window = glfwCreateWindow(
         100,
         100,
-        "Dear ImGui GLFW+WebGPU example",
+        "Moshading",
         nullptr,
         nullptr
     );
 
-    if (this->window == nullptr) {
+    if (window == nullptr) {
         glfwTerminate();
         return false;
     }
 
-    glfwSetWindowUserPointer(this->window, this);
+    glfwSetWindowUserPointer(window, this);
 
     struct wl_display* wayland_display = glfwGetWaylandDisplay();
-    struct wl_surface* wayland_surface = glfwGetWaylandWindow(this->window);
+    struct wl_surface* wayland_surface = glfwGetWaylandWindow(window);
 
     wgpu::SurfaceSourceWaylandSurface fromWaylandSurface;
     fromWaylandSurface.chain.sType = WGPUSType_SurfaceSourceWaylandSurface;
@@ -65,15 +65,15 @@ bool Renderer::init() {
     surfaceDescriptor.nextInChain = &fromWaylandSurface.chain;
     surfaceDescriptor.label = WGPUStringView{nullptr, WGPU_STRLEN};
 
-    this->surface = ctx.gpu.get_instance().createSurface(surfaceDescriptor);
-    if (!*this->surface) {
-        glfwDestroyWindow(this->window);
+    surface = ctx.gpu.get_instance().createSurface(surfaceDescriptor);
+    if (!*surface) {
+        glfwDestroyWindow(window);
         glfwTerminate();
         return false;
     }
 
     wgpu::SurfaceCapabilities sc;
-    this->surface->getCapabilities(ctx.gpu.get_adapter(), &sc);
+    surface->getCapabilities(ctx.gpu.get_adapter(), &sc);
 
     bool format_found = false;
     for (size_t i = 0; i < sc.formatCount; i++) {
@@ -82,30 +82,30 @@ bool Renderer::init() {
         }
     }
     if (!format_found) {
-        glfwDestroyWindow(this->window);
+        glfwDestroyWindow(window);
         glfwTerminate();
         return false;
     }
 
     int width, height;
-    glfwGetFramebufferSize(this->window, &width, &height);
+    glfwGetFramebufferSize(window, &width, &height);
 
-    this->surface_config.nextInChain = nullptr;
-    this->surface_config.device = ctx.gpu.get_device();
-    this->surface_config.format = WGPUTextureFormat_RGBA8Unorm;
-    this->surface_config.usage = WGPUTextureUsage_RenderAttachment;
-    this->surface_config.presentMode = WGPUPresentMode_Fifo;
-    this->surface_config.width = width;
-    this->surface_config.height = height;
-    this->surface_config.viewFormatCount = 0;
-    this->surface_config.viewFormats = nullptr;
+    surface_config.nextInChain = nullptr;
+    surface_config.device = ctx.gpu.get_device();
+    surface_config.format = WGPUTextureFormat_RGBA8Unorm;
+    surface_config.usage = WGPUTextureUsage_RenderAttachment;
+    surface_config.presentMode = WGPUPresentMode_Fifo;
+    surface_config.width = width;
+    surface_config.height = height;
+    surface_config.viewFormatCount = 0;
+    surface_config.viewFormats = nullptr;
 
-    this->surface->configure(this->surface_config);
+    surface->configure(surface_config);
 
-    glfwSetFramebufferSizeCallback(this->window, resize_callback);
+    glfwSetFramebufferSizeCallback(window, resize_callback);
 
 
-    glfwShowWindow(this->window);
+    glfwShowWindow(window);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -122,12 +122,12 @@ bool Renderer::init() {
     // ImGui::StyleColorsLight();
 
     // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForOther(this->window, true);
+    ImGui_ImplGlfw_InitForOther(window, true);
 
     ImGui_ImplWGPU_InitInfo init_info;
     init_info.Device = ctx.gpu.get_device();
     init_info.NumFramesInFlight = 100;
-    init_info.RenderTargetFormat = this->preferred_fmt;
+    init_info.RenderTargetFormat = preferred_fmt;
     init_info.DepthStencilFormat = WGPUTextureFormat_Undefined;
     ImGui_ImplWGPU_Init(&init_info);
 
@@ -138,11 +138,10 @@ bool Renderer::init() {
 void Renderer::main_loop() {
 
     glfwPollEvents();
-    if (glfwGetWindowAttrib(this->window, GLFW_ICONIFIED) != 0) {
+    if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) || !glfwGetWindowAttrib(window, GLFW_VISIBLE)) {
         ImGui_ImplGlfw_Sleep(10);
         return;
     }
-
 
     // Start the Dear ImGui frame
     ImGui_ImplWGPU_NewFrame();
@@ -162,16 +161,15 @@ void Renderer::main_loop() {
 
 
     wgpu::SurfaceTexture surface_texture;
-    this->surface->getCurrentTexture(&surface_texture);
+    surface->getCurrentTexture(&surface_texture);
 
-    wgpu::raii::TextureView texture_view;
-    *texture_view = wgpuTextureCreateView(surface_texture.texture, NULL);
+    wgpu::raii::TextureView texture_view(wgpuTextureCreateView(surface_texture.texture, NULL));
 
     wgpu::RenderPassColorAttachment color_attachments = {};
     color_attachments.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
     color_attachments.loadOp = wgpu::LoadOp::Clear;
     color_attachments.storeOp = wgpu::StoreOp::Store;
-    color_attachments.clearValue = {0, 100, 200};
+    color_attachments.clearValue = {0, 100, 200, 255};
     color_attachments.view = *texture_view;
 
     wgpu::RenderPassDescriptor render_pass_desc = {};
@@ -192,6 +190,5 @@ void Renderer::main_loop() {
     wgpu::raii::Queue queue = ctx.gpu.get_device().getQueue();
     queue->submit(1, &(*cmd_buffer));
 
-
-    this->surface->present();
+    surface->present();
 }

@@ -25,5 +25,4 @@ struct Renderer {
     bool is_running();
     void display_app();
     void terminate();
-
 };

@@ -20,7 +20,7 @@ struct TaggedUnion {
     template <typename T> requires (std::is_same_v<T, Ts> || ...)
     static constexpr Tag tag_of = []() constexpr {
         std::size_t index = 0;
-        ((std::is_same_v<T, Ts> ? true : (++index, false)) || ...);
+        auto _ = ((std::is_same_v<T, Ts> ? true : (++index, false)) || ...);
         return Tag(index);
     }();
 

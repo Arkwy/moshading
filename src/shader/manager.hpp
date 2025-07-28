@@ -11,13 +11,17 @@
 #include <webgpu/webgpu-raii.hpp>
 
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "shader.hpp"
 #include "shaders/chromatic_aberration.hpp"
 #include "shaders/dithering.hpp"
 #include "shaders/image.hpp"
 #include "shaders/noise.hpp"
 #include "src/context.hpp"
+#include "src/context/resource.hpp"
+#include "src/file_loader.hpp"
 #include "src/log.hpp"
+#include "src/shader/parameter.hpp"
 
 struct ShaderManager {
     Context& ctx;
@@ -98,37 +102,42 @@ struct ShaderManager {
 #undef X
     }
 
-
     template <ShaderKind K>
     requires(sizeof(Shader<K>::RESOURCES) != 0)
     bool try_creation_dialog(ShaderKind k) {
-        if (k == K) {
-            static std::optional<std::string> selection = std::nullopt;
+        static const char* selected_name= "";
+        static size_t selected = 0;
+        static size_t selected_id = ~0u;
 
-            if (selection.has_value()) {
-                ImGui::Text("%s", selection.value().c_str());
+        if (k == K) {
+            bool change = ImGui::BeginCombo("selected image", selected_name);
+            if (change) {
+                size_t current = 0;
+                for (auto& [id, index]: ctx.resource_manager.images_index_map) {
+                    const bool is_selected = (selected == current++);
+
+                    if (ImGui::Selectable(ctx.resource_manager.images[index].name.c_str(), is_selected)) {
+                        selected_name = ctx.resource_manager.images[index].name.c_str();
+                        selected = current;
+                        selected_id = id;
+                    };
+
+                    if (is_selected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
             }
 
-            // TODO selections logic
-            ImGui::Text("it needs some ressources");
+            ImGui::BeginDisabled(selected_id == ~0u);
+            if (ImGui::Button("Add")) {
+                add_shader<Shader<K>>(ctx.resource_manager.get_image(selected_id).name, selected_id, ctx);
+                selected_name = "";
+                selected = 0;
+                selected_id = ~0u;
+            }
+            ImGui::EndDisabled();
 
-            // if (!selection.has_value()) {
-            //     ImGui::BeginDisabled();
-            // }
-            // if (ImGui::Button("Add")) {
-            //     assert(selection.has_value());
-            //     add_shader<Shader<K>>(
-            //         std::filesystem::path(selection.value()).filename().stem().string(),
-            //         selection.value(),
-            //         ctx
-            //     );
-            //     adding_shader = false;
-            //     selection = std::nullopt;
-            //     return true;
-            // }
-            // if (!selection.has_value()) {
-            //     ImGui::EndDisabled();
-            // }
             return true;
         }
         return false;

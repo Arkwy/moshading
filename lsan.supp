@@ -1,0 +1,4 @@
+leak:libwgpu_native.so
+leak:libfontconfig.so.1
+leak:libwayland-client.so.0
+leak:libdecor-0.so.0

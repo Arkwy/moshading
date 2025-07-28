@@ -107,6 +107,7 @@
                   # python scripts
                   python313
                   python313Packages.python-lsp-server
+                  python313Packages.fonttools
 
                   # linux file dialog
                   zenity

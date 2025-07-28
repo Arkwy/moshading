@@ -70,7 +70,10 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
           ),
           image_index(image_index),
           parameters(init_parameters(uniforms, render_dim)) {
-        ctx.resource_manager.get_image(image_index).subscribe([&](){update_bind_group();});
+        ctx.resource_manager.get_image(image_index).subscribe([&]() {
+            update_image_base_dim();
+            update_bind_group();
+        }, *this);
     }
 
 
@@ -96,6 +99,8 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
 
     void init() {
         set_render_dim(ctx.render_target.dim);
+
+        update_image_base_dim();
 
         wgpu::BindGroupLayoutEntry bgl_entries[3];
         // texture entry
@@ -132,11 +137,24 @@ struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> 
     }
 
 
+    void update_image_base_dim() {
+        auto& image_resource = ctx.resource_manager.get_image(image_index);
+
+        base_height = image_resource.data.height;
+        base_width = image_resource.data.width;
+
+        uniforms.size_x = base_width;
+        uniforms.size_y = base_height;
+    }
+
+
     void update_bind_group() {
+        auto& image_resource = ctx.resource_manager.get_image(image_index);
+
         wgpu::BindGroupEntry bg_entries[3];
         // texture entry
         bg_entries[0].binding = 0;
-        bg_entries[0].textureView = *ctx.resource_manager.get_image(image_index).texture_view;
+        bg_entries[0].textureView = *image_resource.texture_view;
         // sampler entry
         bg_entries[1].binding = 1;
         bg_entries[1].sampler = *ctx.resource_manager.default_texture_sampler;

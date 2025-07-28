@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 
+#include <memory>
 #include <string>
 #include <webgpu/webgpu-raii.hpp>
 
@@ -18,6 +19,8 @@ enum class ShaderKind { SHADER_KINDS };
 template <typename Derived>
 struct ShaderBase {
     constexpr static const ResourceKind RESOURCES[0] = {};
+    std::shared_ptr<void> lifetime_token; // lifetime tracker used for auto unsubscription to resources updates
+
     const Context& ctx;
     const std::string name;
     const ShaderSource& vertex_source;
@@ -87,7 +90,7 @@ struct ShaderBase {
     ShaderBase(
         const std::string& name, const ShaderSource& vertex_source, const ShaderSource& frag_source, const Context& ctx
     )
-        : ctx(ctx), name(name), vertex_source(vertex_source), frag_source(frag_source) {}
+        :  lifetime_token(), ctx(ctx), name(name), vertex_source(vertex_source), frag_source(frag_source) {}
 
     wgpu::raii::PipelineLayout make_pipeline_layout(
         const Context& ctx, const wgpu::BindGroupLayout& default_bind_group_layout
@@ -126,7 +129,7 @@ template <ShaderKind K>
 void Shader<K>::display() {}
 
 template <ShaderKind K>
-void Shader<K>::write_buffers(wgpu::Queue& queue) const {}
+void Shader<K>::write_buffers(wgpu::Queue& _) const {}
 
 template <ShaderKind K>
 wgpu::raii::PipelineLayout Shader<K>::make_pipeline_layout(
@@ -147,7 +150,7 @@ wgpu::raii::PipelineLayout Shader<K>::make_pipeline_layout(
 
 
 template <ShaderKind K>
-void Shader<K>::set_bind_groups(wgpu::RenderPassEncoder& pass_encoder) const {}
+void Shader<K>::set_bind_groups(wgpu::RenderPassEncoder& _) const {}
 
 
 #define X(name) Shader<ShaderKind::name>

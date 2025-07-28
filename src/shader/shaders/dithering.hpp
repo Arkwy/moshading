@@ -125,7 +125,7 @@ struct Shader<ShaderKind::Dithering> : public ShaderBase<Shader<ShaderKind::Dith
     }
 
     void reset() {
-        uniforms = {{{Mode::Threshold, false, 0.0}}};
+        uniforms = {{{Mode::Threshold, 0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.0}}};
     }
 
     void write_buffers(wgpu::Queue& queue) const { queue.writeBuffer(*buffer, 0, &uniforms, sizeof(uniforms)); }

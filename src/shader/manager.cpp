@@ -348,4 +348,5 @@ void ShaderManager::display() {
     }
     creation_dialog(static_cast<ShaderKind>(selected_shader));
     ImGui::EndChild();
+
 }

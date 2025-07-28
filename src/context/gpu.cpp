@@ -29,9 +29,11 @@ bool GPU::init() {
 #endif
 
 #ifndef __EMSCRIPTEN__
+#ifdef DEBUG
     wgpuSetLogLevel(WGPULogLevel_Debug);
+#endif
     wgpuSetLogCallback(
-        [](WGPULogLevel level, WGPUStringView message, void* userdat) {
+        [](WGPULogLevel level, WGPUStringView message, void* _) {
             log(level, "WGPU: " + std::string(message.data, message.length));
         },
         nullptr

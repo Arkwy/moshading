@@ -102,7 +102,7 @@ struct Float {
             ImGui::BeginGroup();
             ImGui::PushID(name.c_str());
             ImGui::PushMultiItemsWidths(N, ImGui::CalcItemWidth());
-            for (int i = 0; i < N; i++) {
+            for (size_t i = 0; i < N; i++) {
                 ImGui::PushID(field_names.has_value() ? field_names.value()[i].c_str() : std::to_string(i).c_str());
                 if (i > 0) ImGui::SameLine(0, g.Style.ItemInnerSpacing.x);
                 value_changed |= ImGui::DragScalar(
@@ -178,10 +178,6 @@ struct Integer {
     Integer(const std::string& name, const int& min, const int& max, int const state)
         : name(name), min(min), max(max), state(state) {}
 
-    Integer(const Integer<W>& other) {
-        std::cout << "copy !!! ò_ó" << std::endl;
-    }
-
     bool display() const;
 };
 
@@ -208,7 +204,7 @@ struct Feature {
         requires std::is_same_v<Childs, void>
         : name(name), childs(std::monostate{}), state(state) {}
 
-    Feature(const std::string& name, bool& initial_state, Childs&& childs)
+    Feature(const std::string& name, bool& state, Childs&& childs)
         requires(!std::is_same_v<Childs, void>)
         : name(name), childs(std::make_optional(std::forward(childs))), state(state) {}
 
@@ -223,6 +219,7 @@ struct Feature {
 };
 
 
+#define STRINGIFY(x) #x
 
 template <size_t I = 0, WidgetGroupType... WGs>
 bool display_indexed(size_t index, const std::tuple<WGs...>& t) {
@@ -232,6 +229,8 @@ bool display_indexed(size_t index, const std::tuple<WGs...>& t) {
         } else {
             return display_indexed<I + 1>(index, t);
         }
+    } else {
+        assert(false && "This code path should never be reached.");
     }
 }
 

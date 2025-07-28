@@ -1,0 +1,8 @@
+# Ignore known false positives from Wayland
+interceptor_name:wayland-client.so
+interceptor_name:libEGL.so
+interceptor_name:libdrm.so
+interceptor_name:libxkbcommon.so
+interceptor_name:libvulkan.so
+# Optionally suppress wgpu-native or other GPU drivers
+interceptor_name:wgpu_native

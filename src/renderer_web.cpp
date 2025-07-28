@@ -59,7 +59,6 @@ bool Renderer::init() {
     surface_desc.label = nullptr;
 
     // Get surface via emscripten API
-    // wgpu_surface = wgpu_instance->createSurface(surface_desc);
     surface = wgpu::raii::Surface(wgpuInstanceCreateSurface(ctx.gpu.get_instance(), &surface_desc));
 
     // Set preferred format (no adapter needed in emscripten)
@@ -136,15 +135,14 @@ void Renderer::main_loop() {
     wgpu::SurfaceTexture surface_texture;
     surface->getCurrentTexture(&surface_texture);
 
-    wgpu::raii::TextureView textureView;
-    *textureView = wgpuTextureCreateView(surface_texture.texture, NULL);
+    wgpu::raii::TextureView texture_view(wgpuTextureCreateView(surface_texture.texture, nullptr));
 
     wgpu::RenderPassColorAttachment color_attachments = {};
     color_attachments.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
     color_attachments.loadOp = WGPULoadOp_Clear;
     color_attachments.storeOp = WGPUStoreOp_Store;
     color_attachments.clearValue = {0, 100, 200};
-    color_attachments.view = *textureView;
+    color_attachments.view = *texture_view;
 
     wgpu::RenderPassDescriptor render_pass_desc = {};
     render_pass_desc.colorAttachmentCount = 1;

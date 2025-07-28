@@ -1,3 +1,22 @@
+#include "file_loader.hpp"
+
+#include <optional>
+#include <vector>
+
+bool FileLoader::check() {
+    if (handle.has_value() && handle.value().ready()) {
+        assert(handle_callback.has_value());
+        handle_callback.value()(*this);
+        handle = std::nullopt;
+        handle_callback = std::nullopt;
+        return true;
+    }
+    return !handle.has_value();
+}
+
+
+
+
 // #include "file_loader.hpp"
 // #ifdef __EMSCRIPTEN__
 

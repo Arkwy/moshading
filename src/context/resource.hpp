@@ -1,18 +1,31 @@
+#pragma once
+
 #include <stb/stb_image.h>
 
 #include <cstddef>
 #include <filesystem>
 #include <functional>
+#include <type_traits>
+#include <vector>
 #include <webgpu/webgpu-raii.hpp>
+
+#include "imgui.h"
+#include "imgui_internal.h"
 #include "src/context/gpu.hpp"
 #include "src/log.hpp"
 
-using ResourceUpdateCallback = std::function<void()>;
 
 enum class ResourceKind {
     Image,
     // Video, TODO
 };
+
+
+struct SafeCallback {
+    std::weak_ptr<void> subscriber_lifetime;
+    std::function<void()> callback;
+};
+
 
 template <ResourceKind T>
 struct Resource;
@@ -21,9 +34,9 @@ struct Resource;
 template <>
 struct Resource<ResourceKind::Image> {
 #ifdef __EMSCRIPTEN__
-    using Handle = uint8_t*; 
+    using Handle = uint8_t*;
 #else
-    using Handle = std::filesystem::path; 
+    using Handle = std::filesystem::path;
 #endif
 
     struct Data {
@@ -32,24 +45,34 @@ struct Resource<ResourceKind::Image> {
         int height;
     };
 
-    Data data;
+    Data data{};
 
     bool uploaded = false;
     wgpu::raii::Texture texture;
     wgpu::raii::TextureView texture_view;
-    
-    mutable std::vector<ResourceUpdateCallback> update_callbacks;
-    
+
+    std::string name;
+
+    mutable std::vector<SafeCallback> update_callbacks;
+
     ~Resource() {
-        if (data.ptr)
-            stbi_image_free(data.ptr);
+        if (data.ptr) stbi_image_free(data.ptr);
     }
 
 
-    Resource(const Handle& handle, const GPU& gpu, bool upload = true) {
+    Resource(const std::string& name, const Handle& handle, const GPU& gpu, bool upload = true) : name(name) {
         update(handle, gpu, upload);
     }
 
+
+    Resource(Resource&& other)
+        : data(other.data),
+          uploaded(other.uploaded),
+          texture(std::move(other.texture)),
+          texture_view(std::move(other.texture_view)),
+          name(std::move(other.name)) {
+        other.data.ptr = nullptr;
+    }
 
     void update(const Handle& handle, const GPU& gpu, bool upload = true) {
         data = load(handle);
@@ -82,8 +105,7 @@ struct Resource<ResourceKind::Image> {
 
         texture_view = texture->createView(tex_view_desc);
 
-        if (upload)
-            upload_to_gpu(gpu);
+        if (upload) upload_to_gpu(gpu);
 
         notify_update();
     }
@@ -140,15 +162,56 @@ struct Resource<ResourceKind::Image> {
     }
 
 
-    void subscribe(ResourceUpdateCallback callback) const {
-        update_callbacks.push_back(std::move(callback));
+    template <typename T>
+        requires std::is_same_v<std::shared_ptr<void>, decltype(std::declval<T>().lifetime_token)>
+    void subscribe(const std::function<void()>& callback, T& subscriber) const {
+        update_callbacks.push_back(SafeCallback{
+            .subscriber_lifetime = subscriber.lifetime_token,
+            .callback = callback,
+        });
     }
 
 
-    void notify_update() {
-        for (auto& cb : update_callbacks) {
-            cb();
+    void notify_update() {  // TODO implement thread safe alternative ?
+        std::erase_if(update_callbacks, [](auto& scb) { return scb.subscriber_lifetime.expired(); });
+        for (auto& scb : update_callbacks) {
+            scb.callback();
         }
+    }
+
+
+    void display() {
+        ImVec2 display_region = ImGui::GetContentRegionAvail();
+        ImVec2 text_size = ImGui::CalcTextSize(name.c_str());
+
+        float start_x = ImGui::GetCursorPosX();
+        float start_y = ImGui::GetCursorPosY();
+
+        display_region.y -= 1.5 * text_size.y;
+
+        ImVec2 display_dim;
+        ImVec2 tex_to_display_ratio(
+            display_region.x / data.width,
+            display_region.y / data.height
+        );
+
+        if (tex_to_display_ratio.x < tex_to_display_ratio.y) {
+            display_dim.x = tex_to_display_ratio.x * data.width;
+            display_dim.y = tex_to_display_ratio.x * data.height;
+        } else {
+            display_dim.x = tex_to_display_ratio.y * data.width;
+            display_dim.y = tex_to_display_ratio.y * data.height;
+        }
+
+        ImGui::SetCursorPos(ImVec2(
+            -(display_dim.x - display_region.x) * 0.5 + start_x,
+            -(display_dim.y - display_region.y) * 0.5 + start_y
+        ));
+
+        ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<WGPUTextureView>(*texture_view)), display_dim);
+        
+        ImGui::SetCursorPosX((display_region.x - text_size.x) / 2);
+        ImGui::Text("%s", name.c_str());
     }
 };
 
@@ -159,7 +222,6 @@ struct ResourceManager {
     wgpu::raii::Sampler default_texture_sampler;
 
     ResourceManager(const GPU& gpu) : gpu(gpu) {
-        
         wgpu::SamplerDescriptor default_texture_sampler_desc = {};
         default_texture_sampler_desc.addressModeU = wgpu::AddressMode::ClampToEdge;
         default_texture_sampler_desc.addressModeV = wgpu::AddressMode::ClampToEdge;
@@ -172,18 +234,20 @@ struct ResourceManager {
         default_texture_sampler = gpu.get_device().createSampler(default_texture_sampler_desc);
     }
 
-    void add_image(const Resource<ResourceKind::Image>::Handle& handle) {
-        images.push_back(Resource<ResourceKind::Image>(handle, gpu));
-        resource_index_map[next_id()] = images.size() - 1;
+    size_t add_image(const std::string& name, const Resource<ResourceKind::Image>::Handle& handle) {
+        images.push_back(Resource<ResourceKind::Image>(name, handle, gpu));
+        size_t id = next_id();
+        images_index_map[id] = images.size() - 1;
+        return id;
     }
 
     const Resource<ResourceKind::Image>& get_image(size_t id) const {
-        return images[resource_index_map.at(id)];
+        return images[images_index_map.at(id)];
     }
-    
 
-  private:
-    std::unordered_map<size_t, size_t> resource_index_map;
+
+    // private:
+    std::unordered_map<size_t, size_t> images_index_map;
     std::vector<Resource<ResourceKind::Image>> images;
 
     static size_t next_id() {
