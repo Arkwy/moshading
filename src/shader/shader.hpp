@@ -19,7 +19,7 @@ enum class ShaderKind { SHADER_KINDS };
 template <typename Derived>
 struct ShaderBase {
     constexpr static const ResourceKind RESOURCES[0] = {};
-    std::shared_ptr<void> lifetime_token; // lifetime tracker used for auto unsubscription to resources updates
+    const std::shared_ptr<void> lifetime_token; // lifetime tracker used for auto unsubscription to resources updates
 
     const Context& ctx;
     const std::string name;

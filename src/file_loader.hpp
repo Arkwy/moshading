@@ -59,7 +59,7 @@ bool FileLoader::open_dialog(CB callback) {
 
     if constexpr (K == ResourceKind::Image) {
         handle =
-            pfd::open_file("Select an Image File", ".", {"Image Files", "*.png *.jpg *.jpeg *.bmp"}, pfd::opt::none);
+            pfd::open_file("Select an Image File", ".", {"Image Files", "*.png *.jpg *.jpeg *.bmp"}, pfd::opt::multiselect);
     // } else if constexpr (K == ResourceKind::Video) {
     //     static_assert(false, "Not implemented yet.");
     }
@@ -67,79 +67,3 @@ bool FileLoader::open_dialog(CB callback) {
     return true;
 }
 #endif
-
-
-////////////// OLD ///////////////
-// #ifndef __EMSCRIPTEN__
-// template <ResourceKind OT>
-// bool FileLoader::open_dialog() {
-//     if (handle.has_value()) {
-//         Log::warn("A dialog is already opened, file opening aborted.2");
-//         return false;
-//     }
-
-//     if constexpr (OT == ResourceKind::Image) {
-//         Log::warn("should dialog");
-//         handle =
-//             pfd::open_file("Select an Image File", ".", {"Image Files", "*.png *.jpg *.jpeg *.bmp"}, pfd::opt::none);
-//     } else if constexpr (OT == ResourceKind::Video) {
-//         static_assert(false, "Not implemented yet.");
-//     }
-
-//     return true;
-// }
-// #endif
-
-// #pragma once
-
-// #ifndef __EMSCRIPTEN__
-//     #include <portable-file-dialogs.h>
-// #endif
-
-// #include <optional>
-// #include <string>
-// #include <vector>
-
-// #include "log.hpp"
-
-// enum class ResourceKind {
-//     Image,
-//     Video,
-// };
-
-// struct FileLoader {
-//     bool check();
-//     std::optional<std::vector<std::string>> get_result();
-
-//     template <ResourceKind OT>
-//     bool open_dialog();
-
-// #ifdef __EMSCRIPTEN__
-//     static void on_files_selected(const char* file_, void* file_loader_ptr);
-//   private:
-//     bool ready = false;
-//     std::vector<std::string> selected_files;
-// #else
-//     std::optional<pfd::open_file> handle = std::nullopt;
-// #endif
-// };
-
-// #ifndef __EMSCRIPTEN__
-// template <ResourceKind OT>
-// bool FileLoader::open_dialog() {
-//     if (handle.has_value()) {
-//         Log::warn("A dialog is already opened, file opening aborted.2");
-//         return false;
-//     }
-
-//     if constexpr (OT == ResourceKind::Image) {
-//         Log::warn("should dialog");
-//         handle =
-//             pfd::open_file("Select an Image File", ".", {"Image Files", "*.png *.jpg *.jpeg *.bmp"}, pfd::opt::none);
-//     } else if constexpr (OT == ResourceKind::Video) {
-//         static_assert(false, "Not implemented yet.");
-//     }
-
-//     return true;
-// }
-// #endif

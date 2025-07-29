@@ -166,7 +166,7 @@ struct Resource<ResourceKind::Image> {
 
 
     template <typename T>
-        requires std::is_same_v<std::shared_ptr<void>, decltype(std::declval<T>().lifetime_token)>
+        requires std::is_same_v<const std::shared_ptr<void>, decltype(std::declval<T>().lifetime_token)>
     void subscribe(const std::function<void()>& callback, T& subscriber) const {
         update_callbacks.push_back(SafeCallback{
             .subscriber_lifetime = subscriber.lifetime_token,
@@ -193,10 +193,7 @@ struct Resource<ResourceKind::Image> {
         display_region.y -= 1.5 * text_size.y;
 
         ImVec2 display_dim;
-        ImVec2 tex_to_display_ratio(
-            display_region.x / data.width,
-            display_region.y / data.height
-        );
+        ImVec2 tex_to_display_ratio(display_region.x / data.width, display_region.y / data.height);
 
         if (tex_to_display_ratio.x < tex_to_display_ratio.y) {
             display_dim.x = tex_to_display_ratio.x * data.width;
@@ -212,7 +209,7 @@ struct Resource<ResourceKind::Image> {
         ));
 
         ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<WGPUTextureView>(*texture_view)), display_dim);
-        
+
         ImGui::SetCursorPosX((display_region.x - text_size.x) / 2);
         ImGui::Text("%s", name.c_str());
     }
