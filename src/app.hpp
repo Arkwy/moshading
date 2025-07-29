@@ -1,9 +1,5 @@
 #pragma once
 
-// #include <memory>
-// #include <vector>
-
-// #include "image.hpp"
 #include "shader/manager.hpp"
 
 #include <webgpu/webgpu.h>

@@ -10,12 +10,12 @@
 #include <cstring>
 #include <filesystem>
 #include <webgpu/webgpu-raii.hpp>
+
 #include "src/context/resource.hpp"
 #include "src/file_loader.hpp"
 
 
 App::App(Context& ctx) : ctx(ctx), shader_manager(ctx) {}
-
 
 
 void ressource_manager_display(ResourceManager& ressource_manager) {
@@ -25,28 +25,34 @@ void ressource_manager_display(ResourceManager& ressource_manager) {
 
     ImGui::BeginDisabled(!can_open_dialog);
     if (ImGui::Button("Import")) {
-        file_loader.open_dialog<ResourceKind::Image>([&](FileLoader& fl) {
-            assert(fl.handle.has_value() && fl.handle.value().ready());
-            auto result = fl.handle.value().result();
-            for (auto& file : result) {
+        file_loader.open_dialog<ResourceKind::Image>(
+#ifdef __EMSCRIPTEN__
+            [&](const char* name, uint8_t* data, size_t len) {
+                ressource_manager.add_image(name, Resource<ResourceKind::Image>::Handle{.data = data, .len = len});
+            }
+#else
+            [&](const std::string& file) {
                 std::filesystem::path path = file;
                 ressource_manager.add_image(path.stem(), path);
             }
-        });
+#endif
+        );
     }
     ImGui::EndDisabled();
 
     float vignette_size = 200;
-    float max_cursor_x = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - vignette_size; 
+    float max_cursor_x = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - vignette_size;
     for (auto& [resource_id, index] : ressource_manager.images_index_map) {
         auto& resource = ressource_manager.images[index];
-        ImGui::BeginChild(std::format("{}{}", resource.name, resource_id).c_str(), ImVec2(vignette_size, vignette_size));
+        ImGui::BeginChild(
+            std::format("{}{}", resource.name, resource_id).c_str(),
+            ImVec2(vignette_size, vignette_size)
+        );
         resource.display();
         ImGui::EndChild();
         ImGui::SameLine();
         if (ImGui::GetCursorPosX() > max_cursor_x) ImGui::NewLine();
     }
-    
 }
 
 
@@ -71,8 +77,7 @@ void App::display() {
             node->LocalFlags |=
                 ImGuiDockNodeFlags_NoUndocking | static_cast<ImGuiDockNodeFlags>(ImGuiDockNodeFlags_NoTabBar);
 
-        ImGuiID dock_id_down =
-            ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.25f, nullptr, &dockspace_id);
+        ImGuiID dock_id_down = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.25f, nullptr, &dockspace_id);
         node = ImGui::DockBuilderGetNode(dock_id_down);
         if (node)
             node->LocalFlags |=

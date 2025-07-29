@@ -10,7 +10,20 @@
 #include "icons.hpp"
 
 
-bool Renderer::is_running() { return !glfwWindowShouldClose(this->window); }
+bool Renderer::is_running() {
+    return !glfwWindowShouldClose(this->window);
+}
+
+
+void Renderer::pause_rendering() {
+    paused = true;
+}
+
+
+void Renderer::resume_rendering() {
+    paused = false;
+}
+
 
 void Renderer::terminate() {
     ImGui_ImplWGPU_Shutdown();
@@ -23,10 +36,11 @@ void Renderer::terminate() {
     glfwTerminate();
 }
 
-void Renderer::display_app() { this->app.display(); }
+void Renderer::display_app() {
+    this->app.display();
+}
 
 void Renderer::set_style() {
-
     ImGui::GetStyle().ScaleAllSizes(1.5);
 
     ImGuiIO& io = ImGui::GetIO();

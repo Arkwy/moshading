@@ -34,7 +34,10 @@ struct Resource;
 template <>
 struct Resource<ResourceKind::Image> {
 #ifdef __EMSCRIPTEN__
-    using Handle = uint8_t*;
+    struct Handle {
+        uint8_t* data;
+        size_t len;
+    };
 #else
     using Handle = std::filesystem::path;
 #endif
@@ -115,7 +118,7 @@ struct Resource<ResourceKind::Image> {
     static Data load(const Handle& handle) {
         Data data;
 #ifdef __EMSCRIPTEN__
-        data.ptr = stbi_load_from_memory(handle, &data.width, &data.height, nullptr, 4);
+        data.ptr = stbi_load_from_memory(handle.data, handle.len, &data.width, &data.height, nullptr, 4);
 #else
         data.ptr = stbi_load(handle.c_str(), &data.width, &data.height, nullptr, 4);
 #endif

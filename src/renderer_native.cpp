@@ -1,24 +1,47 @@
+#include <GLFW/glfw3.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_wgpu.h>
 #include <imgui.h>
 #include <imgui_internal.h>
-#include <backends/imgui_impl_wgpu.h>
-#include <backends/imgui_impl_glfw.h>
+#include <wayland-client-protocol.h>
+#include <wayland-version.h>
+
 #include <webgpu/webgpu-raii.hpp>
-#include "src/log.hpp"
-#include "webgpu/webgpu.hpp"
-#include <GLFW/glfw3.h>
+#include "webgpu.h"
+
 #define GLFW_EXPOSE_NATIVE_WAYLAND
 #define GLFW_NATIVE_INCLUDE_NONE
 #include <GLFW/glfw3native.h>
+// #include <wayland-client.h>
 
 #include "renderer.hpp"
+#include "src/log.hpp"
 
+// static void handle_surface_enter(void* opaque_handle, struct wl_surface* surface, struct wl_output* output) {
+//     Log::warn("Surface enter");
+//     Renderer* renderer = reinterpret_cast<Renderer*>(opaque_handle);
+//     renderer->resume_rendering();
+// }
 
-void glfw_error_callback(int error, const char* description) {
+// static void handle_surface_leave(void* opaque_handle, struct wl_surface* surface, struct wl_output* output) {
+//     Log::warn("Surface leave");
+//     Renderer* renderer = reinterpret_cast<Renderer*>(opaque_handle);
+//     renderer->pause_rendering();
+// }
+
+// static const wl_surface_listener listener = {
+//     .enter = handle_surface_enter,
+//     .leave = handle_surface_leave,
+//     .preferred_buffer_scale = nullptr,
+//     .preferred_buffer_transform = nullptr,
+// };
+
+static void glfw_error_callback(int error, const char* description) {
     Log::error("GLFW Error code {}: {}", error, description);
 }
 
 
-void resize_callback(GLFWwindow* window, int new_width, int new_height) {
+static void resize_callback(GLFWwindow* window, int new_width, int new_height) {
     Renderer& app = *static_cast<Renderer*>(glfwGetWindowUserPointer(window));
 
     app.surface_config.width = new_width;
@@ -27,9 +50,7 @@ void resize_callback(GLFWwindow* window, int new_width, int new_height) {
     app.surface->configure(app.surface_config);
 }
 
-
 bool Renderer::init() {
-
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) return false;
 
@@ -37,13 +58,7 @@ bool Renderer::init() {
     // This needs to be done explicitly later.
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-    window = glfwCreateWindow(
-        100,
-        100,
-        "Moshading",
-        nullptr,
-        nullptr
-    );
+    window = glfwCreateWindow(100, 100, "Moshading", nullptr, nullptr);
 
     if (window == nullptr) {
         glfwTerminate();
@@ -52,20 +67,22 @@ bool Renderer::init() {
 
     glfwSetWindowUserPointer(window, this);
 
-    struct wl_display* wayland_display = glfwGetWaylandDisplay();
-    struct wl_surface* wayland_surface = glfwGetWaylandWindow(window);
+    wl_display* wayland_display = glfwGetWaylandDisplay();
+    wl_surface* wayland_surface = glfwGetWaylandWindow(window);
 
-    wgpu::SurfaceSourceWaylandSurface fromWaylandSurface;
-    fromWaylandSurface.chain.sType = WGPUSType_SurfaceSourceWaylandSurface;
-    fromWaylandSurface.chain.next = nullptr;
-    fromWaylandSurface.display = wayland_display;
-    fromWaylandSurface.surface = wayland_surface;
+    // wl_surface_add_listener(wayland_surface, &listener, this);
 
-    wgpu::SurfaceDescriptor surfaceDescriptor;
-    surfaceDescriptor.nextInChain = &fromWaylandSurface.chain;
-    surfaceDescriptor.label = WGPUStringView{nullptr, WGPU_STRLEN};
+    wgpu::SurfaceSourceWaylandSurface from_wayland_surface;
+    from_wayland_surface.chain.sType = WGPUSType_SurfaceSourceWaylandSurface;
+    from_wayland_surface.chain.next = nullptr;
+    from_wayland_surface.display = wayland_display;
+    from_wayland_surface.surface = wayland_surface;
 
-    surface = ctx.gpu.get_instance().createSurface(surfaceDescriptor);
+    wgpu::SurfaceDescriptor surface_descriptor;
+    surface_descriptor.nextInChain = &from_wayland_surface.chain;
+    surface_descriptor.label = WGPUStringView{nullptr, WGPU_STRLEN};
+
+    surface = ctx.gpu.get_instance().createSurface(surface_descriptor);
     if (!*surface) {
         glfwDestroyWindow(window);
         glfwTerminate();
@@ -94,7 +111,7 @@ bool Renderer::init() {
     surface_config.device = ctx.gpu.get_device();
     surface_config.format = WGPUTextureFormat_RGBA8Unorm;
     surface_config.usage = WGPUTextureUsage_RenderAttachment;
-    surface_config.presentMode = WGPUPresentMode_Fifo;
+    surface_config.presentMode = WGPUPresentMode_Immediate; // TODO switch back to FIFO when out of screen detection works
     surface_config.width = width;
     surface_config.height = height;
     surface_config.viewFormatCount = 0;
@@ -103,7 +120,6 @@ bool Renderer::init() {
     surface->configure(surface_config);
 
     glfwSetFramebufferSizeCallback(window, resize_callback);
-
 
     glfwShowWindow(window);
 
@@ -119,14 +135,13 @@ bool Renderer::init() {
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
-    // ImGui::StyleColorsLight();
 
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOther(window, true);
 
     ImGui_ImplWGPU_InitInfo init_info;
     init_info.Device = ctx.gpu.get_device();
-    init_info.NumFramesInFlight = 100;
+    init_info.NumFramesInFlight = 3;
     init_info.RenderTargetFormat = preferred_fmt;
     init_info.DepthStencilFormat = WGPUTextureFormat_Undefined;
     ImGui_ImplWGPU_Init(&init_info);
@@ -136,14 +151,20 @@ bool Renderer::init() {
 
 
 void Renderer::main_loop() {
-
     glfwPollEvents();
     if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) || !glfwGetWindowAttrib(window, GLFW_VISIBLE)) {
+        // TODO find out why this never triggers
         ImGui_ImplGlfw_Sleep(10);
         return;
     }
 
-    // Start the Dear ImGui frame
+    int fb_width, fb_height;
+    glfwGetFramebufferSize(window, &fb_width, &fb_height);
+    if (fb_width == 0 || fb_height == 0) {
+        ImGui_ImplGlfw_Sleep(10);
+        return;
+    }
+
     ImGui_ImplWGPU_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
@@ -154,7 +175,7 @@ void Renderer::main_loop() {
     ImGui::Render();
 
 #ifdef IMGUI_IMPL_WEBGPU_BACKEND_DAWN
-    device->tick();
+    ctx.gpu.get_device().tick();
 #elifdef IMGUI_IMPL_WEBGPU_BACKEND_WGPU
     ctx.gpu.get_device().poll(false, nullptr);
 #endif
@@ -163,7 +184,17 @@ void Renderer::main_loop() {
     wgpu::SurfaceTexture surface_texture;
     surface->getCurrentTexture(&surface_texture);
 
-    wgpu::raii::TextureView texture_view(wgpuTextureCreateView(surface_texture.texture, NULL));
+    if (!surface_texture.texture) {
+        Log::warn("Surface texture is null — skipping frame");
+        return;
+    }
+
+    if (surface_texture.status == WGPUSurfaceGetCurrentTextureStatus_SuccessSuboptimal) {
+        Log::error("Suboptimal frame, skipping. (should implement better solution ?)");  // TODO ?
+        return;
+    }
+
+    wgpu::raii::TextureView texture_view(wgpuTextureCreateView(surface_texture.texture, nullptr));
 
     wgpu::RenderPassColorAttachment color_attachments = {};
     color_attachments.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;

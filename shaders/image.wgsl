@@ -34,8 +34,8 @@ fn rotate_2d(a : f32, vec : vec2<f32>) -> vec2<f32> {
     uv += 0.5;
     var color = textureSample(input_tex, input_sampler, fullscreen_uv(coord.xy));
 
+    var image = textureSample(image_tex, image_sampler, uv);
     if (all(uv >= vec2<f32>(0.0)) && all(uv <= vec2<f32>(1.0))) {
-        var image = textureSample(image_tex, image_sampler, uv);
         image.a *= image_uniforms.opacity;
         color = image * image.a + color * (1.0 - image.a);
     }

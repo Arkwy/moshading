@@ -115,9 +115,9 @@ if is_wasm
   )
 else
   glfw_dep = dependency('glfw3')
-  gl_dep = dependency('gl', required: true)
-  glew_dep = dependency('glew', required: true)
-  wgpu_dep = dependency('wgpu-native', required: true)
+  glew_dep = dependency('glew')
+  wgpu_dep = dependency('wgpu-native')
+  # wayland_dep = dependency('wayland-client')
 
   files += files('src/renderer_native.cpp')
 
@@ -135,9 +135,9 @@ else
           embed_shaders_dep,
           embed_icons_dep,
           glfw_dep,
-          gl_dep,
           glew_dep,
           wgpu_dep,
+          # wayland_dep,
       ],
       cpp_args: ['-DIMGUI_IMPL_WEBGPU_BACKEND_WGPU', '-DWEBGPU_BACKEND_WGPU', '-std=c++26'] + compile_args,
       link_args: link_args,
