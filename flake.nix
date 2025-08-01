@@ -83,6 +83,7 @@
                   glew
                   glfw
                   wgpu-native
+                  wgpu-utils
                   vulkan-loader
                   vulkan-tools
                   vulkan-headers

@@ -5,10 +5,22 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_wgpu.h>
 
+#include <chrono>
+#include <thread>
 #include <webgpu/webgpu-raii.hpp>
 
 #include "icons.hpp"
 
+void Renderer::fps_limiter(int target_fps) {
+    using clock = std::chrono::steady_clock;
+    static auto next_frame_time = clock::now();
+    auto frame_duration = std::chrono::duration<double>(1.0 / target_fps);
+
+    next_frame_time += std::chrono::duration_cast<clock::duration>(frame_duration);
+    std::this_thread::sleep_until(next_frame_time);
+
+    // No update to next_frame_time here — it's already been incremented
+}
 
 bool Renderer::is_running() {
     return !glfwWindowShouldClose(this->window);

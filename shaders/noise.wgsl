@@ -43,7 +43,6 @@ fn gaussian_noise(r1: f32, r2: f32, mean: f32, variance: f32) -> f32 {
     // let z0  = mag * cos(two_pi * r2) + mu;
     // let z1  = mag * sin(two_pi * r2) + mu;
     // return vec2<f32>(z0, z1);
-
 }
 
 @fragment fn fs_main(@builtin(position) coord : vec4<f32>) -> @location(0) vec4<f32> {

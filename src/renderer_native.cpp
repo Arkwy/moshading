@@ -7,7 +7,6 @@
 #include <wayland-version.h>
 
 #include <webgpu/webgpu-raii.hpp>
-#include "webgpu.h"
 
 #define GLFW_EXPOSE_NATIVE_WAYLAND
 #define GLFW_NATIVE_INCLUDE_NONE
@@ -16,6 +15,9 @@
 
 #include "renderer.hpp"
 #include "src/log.hpp"
+
+
+
 
 // static void handle_surface_enter(void* opaque_handle, struct wl_surface* surface, struct wl_output* output) {
 //     Log::warn("Surface enter");
@@ -111,7 +113,8 @@ bool Renderer::init() {
     surface_config.device = ctx.gpu.get_device();
     surface_config.format = WGPUTextureFormat_RGBA8Unorm;
     surface_config.usage = WGPUTextureUsage_RenderAttachment;
-    surface_config.presentMode = WGPUPresentMode_Immediate; // TODO switch back to FIFO when out of screen detection works
+    surface_config.presentMode =
+        WGPUPresentMode_Immediate;  // TODO switch back to FIFO when out of screen detection works
     surface_config.width = width;
     surface_config.height = height;
     surface_config.viewFormatCount = 0;
@@ -222,4 +225,6 @@ void Renderer::main_loop() {
     queue->submit(1, &(*cmd_buffer));
 
     surface->present();
+
+    fps_limiter(100);
 }

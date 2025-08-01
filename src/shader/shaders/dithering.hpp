@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 
+#include <bit>
 #include <webgpu/webgpu-raii.hpp>
 
 #include "shaders_code.hpp"
@@ -12,49 +13,37 @@
 template <>
 struct Shader<ShaderKind::Dithering> : public ShaderBase<Shader<ShaderKind::Dithering>> {
     Shader(const std::string& name, const Context& ctx)
-        : ShaderBase<Shader<ShaderKind::Dithering>>(name, ctx.shader_source_cache.get(fullscreen_vertex), ctx.shader_source_cache.get(dithering), ctx) {}
+        : ShaderBase<Shader<ShaderKind::Dithering>>(
+              name, ctx.shader_source_cache.get(fullscreen_vertex), ctx.shader_source_cache.get(dithering), ctx
+          ) {}
 
-    enum class Mode : int {
-        Threshold, 
-        Random, 
-        Halftone, 
-        Bayer, 
-        VoidAndCluster
-    };
+    enum class Mode : int { Threshold, Random, Halftone, Bayer, VoidAndCluster };
     const char* modes[5] = {"Threshold", "Random", "Halftone", "Ordered (bayer)", "Ordered (void-and-cluster)"};
 
     struct alignas(16) Uniforms {
-        union {
-            struct {
-                Mode mode;
-                int colored;
-                float threshold;
-                float _;
-                float threshold_r;
-                float threshold_g;
-                float threshold_b;
-                float _;
-            };
-            struct {
-                int mode_id;
-                int _;
-                float _;
-                float _;
-                float threshold_rgb[3];
-                float _;
-            };
-        };
+        Mode mode = Mode::Threshold;
+        unsigned int control = 0;
+        float threshold = 0.5;
+        float _;
+        float threshold_rgb[3] = {0.5, 0.5, 0.5};
+        float _;
+        float random_min_rgb[3] = {0, 0, 0};
+        float _;
+        float random_max_rgb[3] = {1, 1, 1};
+        float random_min = 0;
+        float random_max = 1;
+        float halftone_scale = 10;
+        float halftone_angle = 0;
     };
 
 
-    Uniforms uniforms = {{{Mode::Threshold, 0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.0}}};
-
+    Uniforms uniforms{};
+    
     wgpu::raii::BindGroupLayout bind_group_layout;
     wgpu::raii::Buffer buffer;
     wgpu::raii::BindGroup bind_group;
 
     void init() {
-
         wgpu::BindGroupLayoutEntry bgl_entry;
         bgl_entry.binding = 0;
         bgl_entry.visibility = wgpu::ShaderStage::Fragment;
@@ -105,19 +94,37 @@ struct Shader<ShaderKind::Dithering> : public ShaderBase<Shader<ShaderKind::Dith
 
 
     void display() {
-        ImGui::Combo("Mode", &uniforms.mode_id, modes, 2);
-        bool cd = static_cast<bool>(uniforms.colored);
-        if (ImGui::Checkbox("Color dependant", &cd)) {
-            uniforms.colored = static_cast<int>(cd);
+        ImGui::Combo("Mode", std::bit_cast<int*>(&uniforms.mode), modes, 5);
+
+        bool color_mode = static_cast<bool>(uniforms.control & 1u);
+        bool time_based = static_cast<bool>(uniforms.control & 2u);
+        if (ImGui::Checkbox("color mode", &color_mode)) {
+            uniforms.control ^= 1u;
         }
-        
+
         switch (uniforms.mode) {
             case Mode::Threshold:
-                if (uniforms.colored == 0) {
-                    ImGui::DragFloat("threshold", &uniforms.threshold, 0.001);
-                } else {
+                if (uniforms.control & 1u) {
                     ImGui::DragFloat3("threshold", uniforms.threshold_rgb, 0.001);
+                } else {
+                    ImGui::DragFloat("threshold", &uniforms.threshold, 0.001);
                 }
+                break;
+            case Mode::Random:
+                if (ImGui::Checkbox("dynamic", &time_based)) {
+                    uniforms.control ^= 2u;
+                }
+                if (uniforms.control & 1u) {
+                    ImGui::DragFloat3("min threshold", uniforms.random_min_rgb, 0.001);
+                    ImGui::DragFloat3("max threshold", uniforms.random_max_rgb, 0.001);
+                } else {
+                    ImGui::DragFloat("min threshold", &uniforms.random_min, 0.001);
+                    ImGui::DragFloat("max threshold", &uniforms.random_max, 0.001);
+                }
+                break;
+            case Mode::Halftone:
+                ImGui::DragFloat("size", &uniforms.halftone_scale, 0.1);
+                ImGui::DragFloat("orientation", &uniforms.halftone_angle, 0.01);
                 break;
             default:
                 break;
@@ -125,10 +132,12 @@ struct Shader<ShaderKind::Dithering> : public ShaderBase<Shader<ShaderKind::Dith
     }
 
     void reset() {
-        uniforms = {{{Mode::Threshold, 0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.0}}};
+        uniforms = {};
     }
 
-    void write_buffers(wgpu::Queue& queue) const { queue.writeBuffer(*buffer, 0, &uniforms, sizeof(uniforms)); }
+    void write_buffers(wgpu::Queue& queue) const {
+        queue.writeBuffer(*buffer, 0, &uniforms, sizeof(uniforms));
+    }
 
     void set_bind_groups(wgpu::RenderPassEncoder& pass_encoder) const {
         pass_encoder.setBindGroup(1, *bind_group, 0, nullptr);

@@ -141,7 +141,7 @@ void Renderer::main_loop() {
     color_attachments.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
     color_attachments.loadOp = WGPULoadOp_Clear;
     color_attachments.storeOp = WGPUStoreOp_Store;
-    color_attachments.clearValue = {0, 100, 200};
+    color_attachments.clearValue = {0, 100, 200, 255};
     color_attachments.view = *texture_view;
 
     wgpu::RenderPassDescriptor render_pass_desc = {};
@@ -160,5 +160,7 @@ void Renderer::main_loop() {
     wgpu::raii::CommandBuffer cmd_buffer = encoder->finish(cmd_buffer_desc);
     wgpu::raii::Queue queue = ctx.gpu.get_device().getQueue();
     queue->submit(1, &(*cmd_buffer));
+
+    fps_limiter(100);
 }
 

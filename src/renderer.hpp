@@ -31,4 +31,6 @@ struct Renderer {
     void display_app();
     void terminate();
 
+    // utils
+    void static fps_limiter(int target_fps);
 };

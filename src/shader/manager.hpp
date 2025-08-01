@@ -90,7 +90,7 @@ struct ShaderManager {
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
 
     void init();
-
+    void display_render_result() const;
     void resize(unsigned int new_width, unsigned int new_height);
 
     void creation_dialog(ShaderKind k) {
