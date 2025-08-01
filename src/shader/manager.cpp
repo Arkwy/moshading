@@ -208,40 +208,6 @@ void ShaderManager::render() const {
 
 
 
-static void pixel_perfect_render(const ImDrawList* parent_list, const ImDrawCmd* pcmd) {
-
-
-    wgpu::raii::RenderPassEncoder pass_encoder(reinterpret_cast<ImGui_ImplWGPU_RenderState*>(ImGui::GetPlatformIO().Renderer_RenderState)->RenderPassEncoder);
-
-
-    ImTextureID tex_id = pcmd->GetTexID();
-    ImGuiID tex_id_hash = ImHashData(&tex_id, sizeof(tex_id), 0);
-    WGPUBindGroup bind_group = (WGPUBindGroup)bd->renderResources.ImageBindGroups.GetVoidPtr(tex_id_hash);
-    if (!bind_group)
-        {
-            bind_group = ImGui_ImplWGPU_CreateImageBindGroup(bd->renderResources.ImageBindGroupLayout, (WGPUTextureView)tex_id);
-            bd->renderResources.ImageBindGroups.SetVoidPtr(tex_id_hash, bind_group);
-        }
-    wgpuRenderPassEncoderSetBindGroup(pass_encoder, 1, (WGPUBindGroup)bind_group, 0, nullptr);
-
-    // Project scissor/clipping rectangles into framebuffer space
-    ImVec2 clip_min((pcmd->ClipRect.x - clip_off.x) * clip_scale.x, (pcmd->ClipRect.y - clip_off.y) * clip_scale.y);
-    ImVec2 clip_max((pcmd->ClipRect.z - clip_off.x) * clip_scale.x, (pcmd->ClipRect.w - clip_off.y) * clip_scale.y);
-
-    // Clamp to viewport as wgpuRenderPassEncoderSetScissorRect() won't accept values that are off bounds
-    if (clip_min.x < 0.0f) { clip_min.x = 0.0f; }
-    if (clip_min.y < 0.0f) { clip_min.y = 0.0f; }
-    if (clip_max.x > fb_width) { clip_max.x = (float)fb_width; }
-    if (clip_max.y > fb_height) { clip_max.y = (float)fb_height; }
-    if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
-        continue;
-
-    // Apply scissor/clipping rectangle, Draw
-    wgpuRenderPassEncoderSetScissorRect(pass_encoder, (uint32_t)clip_min.x, (uint32_t)clip_min.y, (uint32_t)(clip_max.x - clip_min.x), (uint32_t)(clip_max.y - clip_min.y));
-    wgpuRenderPassEncoderDrawIndexed(pass_encoder, pcmd->ElemCount, 1, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset, 0);
-}
-
-
 void ShaderManager::display_render_result() const {
     unsigned int& width = ctx.render_target.dim[0];
     unsigned int& height = ctx.render_target.dim[1];
@@ -292,26 +258,24 @@ void ShaderManager::display_render_result() const {
     ));
 
     // EXPERIMENTAL //
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    // ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+    // // draw_list->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
+    // draw_list->AddCallback(pixel_perfect_render, nullptr);
+
+    // draw_list->AddImage(
+    //     reinterpret_cast<ImTextureID>(static_cast<WGPUTextureView>((shaders.size() % 2) ? *texture_view_B : *texture_view_A)),
+    //     ImGui::GetCursorPos(),
+    //     ImVec2(ImGui::GetCursorPosX() + display_dim.x, ImGui::GetCursorPosY() + display_dim.y),
+    //     ImVec2(0, 0),
+    //     ImVec2(1, 1),
+    //     IM_COL32_WHITE
+    // );
 
     // draw_list->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
-    draw_list->AddCallback(pixel_perfect_render, nullptr);
-
-    draw_list->AddImage(
-        reinterpret_cast<ImTextureID>(static_cast<WGPUTextureView>((shaders.size() % 2) ? *texture_view_B : *texture_view_A)),
-        ImGui::GetCursorPos(),
-        ImVec2(ImGui::GetCursorPosX() + display_dim.x, ImGui::GetCursorPosY() + display_dim.y),
-        ImVec2(0, 0),
-        ImVec2(1, 1),
-        IM_COL32_WHITE
-    );
-
-    draw_list->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
     // EXPERIMENTAL //
 
-
-    // ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<WGPUTextureView>((shaders.size() % 2) ? *texture_view_B : *texture_view_A)), display_dim);
-
+    ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<WGPUTextureView>((shaders.size() % 2) ? *texture_view_B : *texture_view_A)), display_dim);
 
     ImGui::SetCursorPos(ImVec2(20, 20));
     ImGui::Text("fps: %.1f", ImGui::GetIO().Framerate);

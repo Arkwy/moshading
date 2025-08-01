@@ -21,6 +21,7 @@ struct DitherUniforms {
     random_max: f32,
     halftone_scale: f32,
     halftone_angle: f32,
+    bayer_steps: u32,
 };
 
 @group(1) @binding(0) var<uniform> parameters: DitherUniforms;
@@ -41,9 +42,8 @@ fn threshold_dithering(color: vec4<f32>, coord: vec2<f32>) -> vec4<f32> {
     return vec4<f32>(vec3<f32>(f32((color.r + color.g + color.b) / 3.0 > parameters.threshold)), color.a);
 }
 
-
-
 fn pcg3d(vec: vec3<u32>) -> vec3<u32> {
+    // from: http://www.jcgt.org/published/0009/03/02/
     var v = vec * vec3<u32>(1664525u) + vec3<u32>(1013904223u);
     v.x += v.y*v.z; v.y += v.z*v.x; v.z += v.x*v.y;
     v.x ^= v.x >> 16u; v.y ^= v.y >> 16u; v.z ^= v.z >> 16u;
@@ -93,7 +93,7 @@ fn halftone_dithering(color: vec4<f32>, coord: vec2<f32>) -> vec4<f32> {
 fn ordered_dithering(color: vec4<f32>, coord: vec2<f32>) -> vec4<f32> {
     var mask: f32 = 0;
     var grid = vec2<u32>(coord);
-    let steps = 2u;
+    let steps = parameters.bayer_steps;
     for (var i: u32 = 0; i < steps; i++) {
         var id_2d = grid % 2;
         let id = f32(id_2d.x + 2 * (id_2d.x ^ id_2d.y)) / f32(4u << (2u * i));

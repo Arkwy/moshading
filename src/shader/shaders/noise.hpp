@@ -15,36 +15,17 @@ struct Shader<ShaderKind::Noise> : public ShaderBase<Shader<ShaderKind::Noise>> 
     Shader(const std::string& name, const Context& ctx)
         : ShaderBase<Shader<ShaderKind::Noise>>(name, ctx.shader_source_cache.get(fullscreen_vertex), ctx.shader_source_cache.get(noise), ctx) {}
 
-    enum class Mode : int {
-        Grey,
-        Colored,
-    };
-    const char* modes[2] = {"Grey", "Colored"};
 
     struct alignas(16) Uniforms {
-        union {
-            struct {
-                float mean_red;
-                float mean_green;
-                float mean_blue;
-                float mean;
-                float variance_red;
-                float variance_green;
-                float variance_blue;
-                float variance;
-                Mode mode;
-            };
-            struct {
-                float colored_mean[3];
-                float _;
-                float colored_variance[3];
-                float _;
-                int mode_id;
-            };
-        };
+        float colored_min[3] = {-0.1, -0.1, -0.1};
+        float min = -0.1;
+        float colored_max[3] = {0.1, 0.1, 0.1};
+        float max = 0.1;
+        unsigned int control = 3;
+        unsigned int seed = 0;
     };
 
-    Uniforms uniforms = {{{0.0, 0.0, 0.0, 0.0, 0.05, 0.05, 0.05, 0.05, Mode::Grey}}};
+    Uniforms uniforms{};
 
     wgpu::raii::BindGroupLayout bind_group_layout;
     wgpu::raii::Buffer buffer;
@@ -101,21 +82,39 @@ struct Shader<ShaderKind::Noise> : public ShaderBase<Shader<ShaderKind::Noise>> 
 
 
     void display() {
-        ImGui::Combo("Mode", &uniforms.mode_id, modes, 2);
-        switch (uniforms.mode) {
-            case Mode::Grey:
-                ImGui::DragFloat("mean", &uniforms.mean, 0.001);
-                ImGui::DragFloat("variance", &uniforms.variance, 0.001, 0, 100);
-                break;
-            default:
-                ImGui::DragFloat3("mean", uniforms.colored_mean, 0.001);
-                ImGui::DragFloat3("variance", uniforms.colored_variance, 0.001);
-                break;
+        bool color_mode = uniforms.control & 1u;
+        bool dynamic_mode = uniforms.control & 2u;
+        if (ImGui::Checkbox("color mode", &color_mode)) {
+            uniforms.control ^= 1u;
+        }
+        if (ImGui::Checkbox("dynamic", &dynamic_mode)) {
+            uniforms.control ^= 2u;
+        }
+        int seed = uniforms.seed;
+        if (ImGui::InputInt("seed", &seed) && seed >= 0) uniforms.seed = seed;  
+        if (color_mode) {
+            if (ImGui::DragFloat3("min", uniforms.colored_min, 0.01, -1, 1, "%.2f"))
+                #pragma unroll
+                for (size_t i = 0; i < 3; i++)
+                    if (uniforms.colored_min[i] > uniforms.colored_max[i])
+                        uniforms.colored_min[i] = uniforms.colored_max[i];
+            if (ImGui::DragFloat3("max", uniforms.colored_max, 0.01, -1, 1, "%.2f"))
+                #pragma unroll
+                for (size_t i = 0; i < 3; i++)
+                    if (uniforms.colored_max[i] < uniforms.colored_min[i])
+                        uniforms.colored_max[i] = uniforms.colored_min[i];
+        } else {
+            if (ImGui::DragFloat("min", &uniforms.min, 0.01, -1, 1, "%.2f"))
+                if (uniforms.min > uniforms.max)
+                    uniforms.min = uniforms.max;
+            if (ImGui::DragFloat("max", &uniforms.max, 0.01, -1, 1, "%.2f"))
+                if (uniforms.max < uniforms.min)
+                    uniforms.max = uniforms.min;
         }
     }
 
     void reset() {
-        uniforms = {{{0.0, 0.0, 0.0, 0.0, 0.05, 0.05, 0.05, 0.05, Mode::Grey}}};
+        uniforms = {};
     }
 
     void write_buffers(wgpu::Queue& queue) const { queue.writeBuffer(*buffer, 0, &uniforms, sizeof(uniforms)); }

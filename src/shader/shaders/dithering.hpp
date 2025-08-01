@@ -34,11 +34,12 @@ struct Shader<ShaderKind::Dithering> : public ShaderBase<Shader<ShaderKind::Dith
         float random_max = 1;
         float halftone_scale = 10;
         float halftone_angle = 0;
+        unsigned int bayer_steps = 3;
     };
 
 
     Uniforms uniforms{};
-    
+
     wgpu::raii::BindGroupLayout bind_group_layout;
     wgpu::raii::Buffer buffer;
     wgpu::raii::BindGroup bind_group;
@@ -94,13 +95,14 @@ struct Shader<ShaderKind::Dithering> : public ShaderBase<Shader<ShaderKind::Dith
 
 
     void display() {
-        ImGui::Combo("Mode", std::bit_cast<int*>(&uniforms.mode), modes, 5);
+        ImGui::Combo("Mode", std::bit_cast<int*>(&uniforms.mode), modes, 4);
 
         bool color_mode = static_cast<bool>(uniforms.control & 1u);
         bool time_based = static_cast<bool>(uniforms.control & 2u);
         if (ImGui::Checkbox("color mode", &color_mode)) {
             uniforms.control ^= 1u;
         }
+        int bayer_steps = uniforms.bayer_steps;
 
         switch (uniforms.mode) {
             case Mode::Threshold:
@@ -125,6 +127,9 @@ struct Shader<ShaderKind::Dithering> : public ShaderBase<Shader<ShaderKind::Dith
             case Mode::Halftone:
                 ImGui::DragFloat("size", &uniforms.halftone_scale, 0.1);
                 ImGui::DragFloat("orientation", &uniforms.halftone_angle, 0.01);
+                break;
+            case Mode::Bayer:
+                if (ImGui::SliderInt("steps", &bayer_steps, 0, 10)) uniforms.bayer_steps = bayer_steps;
                 break;
             default:
                 break;
