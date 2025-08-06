@@ -127,6 +127,14 @@ flake.nix             -> Nix flake (dev env + build)
 
 MIT License
 
+## Acknowledgements
+
+- [WebGPU-Cpp](https://github.com/eliemichel/WebGPU-Cpp) by Elie Michel for C++ WebGPU headers.
+- [Dear ImGui](https://github.com/ocornut/imgui) for the GUI.
+- [Portable File Dialogs](https://github.com/samhocevar/portable-file-dialogs) for file selection dialogs.
+- [IconFontCppHeaders](https://github.com/juliettef/IconFontCppHeaders) for icon integration.
+- [stb](https://github.com/nothings/stb) for image loading.
+
 ---
 
 Moshading is in early development — feedback and contributions are welcome!
