@@ -51,7 +51,7 @@ Common:
 ### Build on Linux (Wayland)
 
 ```sh
-meson setup builddir [--buildtype=debug]
+meson setup builddir [--buildtype=release]
 meson compile -C builddir
 ./builddir/moshading
 ````
@@ -64,7 +64,7 @@ Run with:
 ### Build for Web (WASM)
 
 ```sh
-meson setup builddir --cross-file wasm.cross
+meson  setup builds/web --cross-file wasm.cross [--buildtype=release]
 meson compile -C builddir
 ```
 
