@@ -4,7 +4,7 @@
 
 Currently, Moshading supports **Linux (Wayland)** and **WebAssembly/Web** builds. More platforms are planned in future development.
 
----
+
 
 ## Website
 
@@ -14,7 +14,7 @@ WebGPU must be supported and enabled in your browser. Some hardware may not supp
 
 Tested with [google chrome](https://www.google.fr/chrome/) (requires enabling `chrome://flags/#enable-unsafe-webgpu`) and [firefox nightly](https://www.firefox.com/channel/desktop/).
 
----
+
 
 ## Features
 
@@ -23,7 +23,7 @@ Tested with [google chrome](https://www.google.fr/chrome/) (requires enabling `c
 - Real-time rendering using WebGPU
 - GUI powered by Dear ImGui
 
----
+
 
 ## Build Instructions
 
@@ -46,7 +46,7 @@ Common:
 - `ninja`
 - `python3` (for asset embedding scripts)
 
----
+
 
 ### Build on Linux (Wayland)
 
@@ -60,7 +60,6 @@ Run with:
 ```sh
 ./builddir/moshading
 ```
----
 
 ### Build for Web (WASM)
 
@@ -77,7 +76,7 @@ python -m http.server
 
 Go to [localhost:8000](http://127.0.0.1:8000) with a web browser with WebGPU enabled to access the app.
 
----
+
 
 ### Nix Flake (dev env & build)
 
@@ -91,7 +90,7 @@ nix develop
 nix build
 ```
 
----
+
 
 ##  Roadmap / TODO
 
@@ -109,7 +108,7 @@ nix build
 * [ ] **Shader parser for automatic parameter creation**
 * [ ] **Audio-reactive effects ?**
 
----
+
 
 ## Project Structure
 
@@ -122,7 +121,7 @@ meson.build           -> Meson build configuration
 flake.nix             -> Nix flake (dev env + build)
 ```
 
----
+
 
 ## License
 
