@@ -121,19 +121,14 @@ meson.build           -> Meson build configuration
 flake.nix             -> Nix flake (dev env + build)
 ```
 
-
-
-## License
-
-MIT License
-
 ## Acknowledgements
 
-- [WebGPU-Cpp](https://github.com/eliemichel/WebGPU-Cpp) by Elie Michel for C++ WebGPU headers.
-- [Dear ImGui](https://github.com/ocornut/imgui) for the GUI.
-- [Portable File Dialogs](https://github.com/samhocevar/portable-file-dialogs) for file selection dialogs.
-- [IconFontCppHeaders](https://github.com/juliettef/IconFontCppHeaders) for icon integration.
-- [stb](https://github.com/nothings/stb) for image loading.
+- [WebGPU-Cpp](https://github.com/eliemichel/WebGPU-Cpp) by Elie Michel — used to generate WebGPU C++ headers (MIT License).
+- [Dear ImGui](https://github.com/ocornut/imgui) — immediate-mode GUI library (MIT License).
+- [Portable File Dialogs](https://github.com/samhocevar/portable-file-dialogs) — for native file picker dialogs (WTFPL).
+- [Font Awesome](https://github.com/FortAwesome/Font-Awesome) — for UI icons (CC BY 4.0 License).
+- [IconFontCppHeaders](https://github.com/juliettef/IconFontCppHeaders) — for icon header integration (MIT License).
+- [stb](https://github.com/nothings/stb) — for image loading (`stb_image`) (Public Domain / MIT License).
 
 ---
 
