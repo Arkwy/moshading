@@ -149,6 +149,8 @@
               ninja
               pkg-config
               makeWrapper
+              python313
+              python313Packages.fonttools
             ];
 
             buildInputs = with pkgs; [
@@ -166,7 +168,7 @@
             ];
 
             configurePhase = ''
-              meson setup build
+              meson setup build --buildtype=release
             '';
             buildPhase = ''
               meson compile -C build
