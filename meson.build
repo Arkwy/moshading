@@ -103,7 +103,7 @@ if is_wasm
           include_directories(pfd_dir),
           include_directories(icon_headers_dir),
           include_directories(stb_dir),
-          include_directories('emscripten'),
+          include_directories('webgpu-cpp/emscripten'),
       ],
       dependencies: [
           embed_shaders_dep,
@@ -129,7 +129,7 @@ else
           include_directories(pfd_dir),
           include_directories(icon_headers_dir),
           include_directories(stb_dir),
-          include_directories('wgpu-native'),
+          include_directories('webgpu-cpp/wgpu-native'),
       ],
       dependencies: [
           embed_shaders_dep,
