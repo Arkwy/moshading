@@ -126,7 +126,7 @@ flake.nix             -> Nix flake (dev env + build)
 
 ## License
 
-MIT License (or specify your license here)
+MIT License
 
 ---
 
