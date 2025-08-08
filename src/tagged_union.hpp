@@ -84,7 +84,7 @@ struct TaggedUnion {
         if (!matched && tag == Tag(I)) {
             matched = true;
             using T = std::tuple_element_t<I, std::tuple<Ts...>>;
-            reinterpret_cast<T*>(&storage)->~T();
+            reinterpret_cast<T&>(storage).~T();
         }
     }
 
