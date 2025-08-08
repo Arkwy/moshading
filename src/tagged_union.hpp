@@ -1,13 +1,10 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
-#include <functional>
-#include <optional>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 #include <variant>
-#include "src/log.hpp"
 
 
 template <typename... Ts>
