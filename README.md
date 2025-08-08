@@ -12,13 +12,6 @@ WebGPU must be supported and enabled in your browser. Some hardware may not supp
 
 Tested with [google chrome](https://www.google.fr/chrome/) (requires enabling `chrome://flags/#enable-unsafe-webgpu`) and [firefox nightly](https://www.firefox.com/channel/desktop/).
 
-## Features
-
-- Load and display images or videos
-- Apply customizable visual effects via WGSL shaders
-- Real-time rendering using WebGPU
-- GUI powered by Dear ImGui
-
 ## Build Instructions
 
 Moshading uses **Meson** as its build system. A `flake.nix` is also provided for Nix-based development environments and builds.
