@@ -7,6 +7,7 @@
 #include <type_traits>
 #include <utility>
 #include <variant>
+#include "src/log.hpp"
 
 
 template <typename... Ts>
@@ -20,7 +21,7 @@ struct TaggedUnion {
 
     template <typename T>
         requires(std::is_same_v<T, Ts> || ...)
-    static constexpr Tag tag_of = []() constexpr {
+    constexpr static Tag tag_of = []() constexpr {
         std::size_t index = 0;
         auto _ = ((std::is_same_v<T, Ts> ? true : (++index, false)) || ...);
         return Tag(index);
@@ -48,14 +49,14 @@ struct TaggedUnion {
         requires(std::is_same_v<T, Ts> || ...)
     T& get() {
         if (tag != tag_of<T>) throw std::bad_variant_access();
-        return *reinterpret_cast<T*>(&storage);
+        return reinterpret_cast<T&>(storage);
     }
 
     template <typename T>
         requires(std::is_same_v<T, Ts> || ...)
     const T& get() const {
         if (tag != tag_of<T>) throw std::bad_variant_access();
-        return *reinterpret_cast<const T*>(&storage);
+        return reinterpret_cast<const T&>(storage);
     }
 
     template <typename Func>
@@ -75,35 +76,42 @@ struct TaggedUnion {
 
     template <std::size_t... Is>
     void destroy_impl(std::index_sequence<Is...>) {
-        bool matched = false;
-        (try_destroy<Is>(matched), ...);
-    }
+        constexpr static auto dispatch_table = [] {
+            using Tup = std::tuple<Ts...>;
+            using Fn = void (*)(std::byte(&)[storage_size]);
+            return std::array<Fn, sizeof...(Ts)>{
+                +[](std::byte(&storage)[storage_size]) -> void {
+                    using T = std::tuple_element_t<Is, Tup>;
+                    reinterpret_cast<T&>(storage).~T();
+                } ...
+            };
+        }();
 
-    template <std::size_t I>
-    void try_destroy(bool& matched) {
-        if (!matched && tag == Tag(I)) {
-            matched = true;
-            using T = std::tuple_element_t<I, std::tuple<Ts...>>;
-            reinterpret_cast<T&>(storage).~T();
-        }
+        dispatch_table[static_cast<size_t>(tag)](storage); // I wish there was support for switch + fold expressions ...
     }
 
     template <typename Func, std::size_t... Is>
     decltype(auto) apply_impl(Func& func, std::index_sequence<Is...>) {
         using ReturnType = std::invoke_result_t<Func, std::tuple_element_t<0, std::tuple<Ts...>>&>;
 
-        constexpr static auto table = [] {
+        static_assert(
+            (std::is_same_v<ReturnType, std::invoke_result_t<Func, std::tuple_element_t<Is, std::tuple<Ts...>>&>> && ...
+            ),
+            "All types of this union does not return the same type for the applied function."
+        );
+
+        constexpr static auto dispatch_table = [] {
             using Tup = std::tuple<Ts...>;
             using Fn = ReturnType (*)(std::byte(&)[storage_size], Func&);
             return std::array<Fn, sizeof...(Ts)>{
                 +[](std::byte(&storage)[storage_size] , Func& f) -> ReturnType {
                     using T = std::tuple_element_t<Is, Tup>;
-                    return f(*reinterpret_cast<T*>(&storage));
+                    return f(reinterpret_cast<T&>(storage));
                 } ...
             };
         }();
 
-        return table[static_cast<size_t>(tag)](storage, func);
+        return dispatch_table[static_cast<size_t>(tag)](storage, func);
     }
 
 };
