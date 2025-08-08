@@ -64,7 +64,8 @@ struct TaggedUnion {
     }
 
   private:
-    alignas(Ts...) std::byte storage[std::max({sizeof(Ts)...})];
+    constexpr static const size_t storage_size = std::max({sizeof(Ts)...});
+    alignas(Ts...) std::byte storage[storage_size];
 
     void destroy() {
         if (tag == Tag::None) return;
@@ -89,52 +90,20 @@ struct TaggedUnion {
 
     template <typename Func, std::size_t... Is>
     decltype(auto) apply_impl(Func& func, std::index_sequence<Is...>) {
-        // using ReturnType = std::invoke_result_t<Func, std::tuple_element_t<0, std::tuple<Ts...>>&>;
-        using _ReturnType = std::invoke_result_t<Func, std::tuple_element_t<0, std::tuple<Ts...>>&>;
+        using ReturnType = std::invoke_result_t<Func, std::tuple_element_t<0, std::tuple<Ts...>>&>;
 
-        static_assert(
-            (std::is_same_v<_ReturnType, std::invoke_result_t<Func, std::tuple_element_t<Is, std::tuple<Ts...>>&>> && ...
-            ),
-            "All types of this union does not return the same type for the applied function."
-        );
+        constexpr static auto table = [] {
+            using Tup = std::tuple<Ts...>;
+            using Fn = ReturnType (*)(std::byte(&)[storage_size], Func&);
+            return std::array<Fn, sizeof...(Ts)>{
+                +[](std::byte(&storage)[storage_size] , Func& f) -> ReturnType {
+                    using T = std::tuple_element_t<Is, Tup>;
+                    return f(*reinterpret_cast<T*>(&storage));
+                } ...
+            };
+        }();
 
-        using ReturnType = std::conditional_t<
-            std::is_reference_v<_ReturnType>,
-            std::reference_wrapper<std::remove_reference_t<_ReturnType>>,
-            _ReturnType>;
-
-
-        bool matched = false;
-        if constexpr (!std::is_void_v<ReturnType>) {
-            std::optional<ReturnType> result = std::nullopt;
-            (try_apply<Func, ReturnType, Is>(func, matched, result), ...);
-            assert(result.has_value());
-            ReturnType realsult = std::move(result.value());
-            if constexpr (std::is_reference_v<_ReturnType>) {
-                return realsult.get();
-            } else {
-                return realsult;
-            }
-        } else {
-            (try_apply<Func, Is>(func, matched), ...);
-        }
+        return table[static_cast<size_t>(tag)](storage, func);
     }
 
-    template <typename Func, typename ReturnType, std::size_t I>
-    void try_apply(Func& func, bool& matched, std::optional<ReturnType>& result) {
-        using T = std::tuple_element_t<I, std::tuple<Ts...>>;
-        if (!matched && tag == Tag(I)) {
-            assert(!result.has_value());
-            result = func(*reinterpret_cast<T*>(&storage));
-        }
-    }
-
-    template <typename Func, std::size_t I>
-    void try_apply(Func& func, bool& matched) {
-        using T = std::tuple_element_t<I, std::tuple<Ts...>>;
-        if (!matched && tag == Tag(I)) {
-            matched = true;
-            func(*reinterpret_cast<T*>(&storage));
-        }
-    }
 };
