@@ -12,6 +12,7 @@
 
 template <>
 struct Shader<ShaderKind::ChromaticAbberation> : public ShaderBase<Shader<ShaderKind::ChromaticAbberation>> {
+    constexpr static const char* const default_name = "chromatic abberation";
     enum class Mode: unsigned int {
         Uniform,
         LinearScaling,

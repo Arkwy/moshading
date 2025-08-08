@@ -12,6 +12,7 @@
 
 template <>
 struct Shader<ShaderKind::Dithering> : public ShaderBase<Shader<ShaderKind::Dithering>> {
+    constexpr static const char* const default_name = "dithering";
     Shader(const std::string& name, const Context& ctx)
         : ShaderBase<Shader<ShaderKind::Dithering>>(
               name, ctx.shader_source_cache.get(fullscreen_vertex), ctx.shader_source_cache.get(dithering), ctx

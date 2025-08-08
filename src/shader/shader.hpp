@@ -19,10 +19,11 @@ enum class ShaderKind { SHADER_KINDS };
 template <typename Derived>
 struct ShaderBase {
     constexpr static const ResourceKind RESOURCES[0] = {};
+    constexpr static const char* const default_name = "unamed shader";
     const std::shared_ptr<void> lifetime_token; // lifetime tracker used for auto unsubscription to resources updates
 
     const Context& ctx;
-    const std::string name;
+    std::string name;
     const ShaderSource& vertex_source;
     const ShaderSource& frag_source;
 

@@ -2,12 +2,15 @@
 
 #include <IconsFontAwesome6.h>
 #include <imgui.h>
+#include <imgui/misc/cpp/imgui_stdlib.h>
 
 #include <chrono>
+#include <functional>
 #include <memory>
 #include <webgpu/webgpu.hpp>
 
 #include "backends/imgui_impl_wgpu.h"
+#include "imgui_internal.h"
 #include "src/shader/shader.hpp"
 #include "webgpu/webgpu-raii.hpp"
 
@@ -264,31 +267,76 @@ void ShaderManager::display_render_result() const {
     // draw_list->AddCallback(pixel_perfect_render, nullptr);
 
     // draw_list->AddImage(
-    //     reinterpret_cast<ImTextureID>(static_cast<WGPUTextureView>((shaders.size() % 2) ? *texture_view_B : *texture_view_A)),
-    //     ImGui::GetCursorPos(),
-    //     ImVec2(ImGui::GetCursorPosX() + display_dim.x, ImGui::GetCursorPosY() + display_dim.y),
-    //     ImVec2(0, 0),
-    //     ImVec2(1, 1),
-    //     IM_COL32_WHITE
+    //     reinterpret_cast<ImTextureID>(static_cast<WGPUTextureView>((shaders.size() % 2) ? *texture_view_B :
+    //     *texture_view_A)), ImGui::GetCursorPos(), ImVec2(ImGui::GetCursorPosX() + display_dim.x,
+    //     ImGui::GetCursorPosY() + display_dim.y), ImVec2(0, 0), ImVec2(1, 1), IM_COL32_WHITE
     // );
 
     // draw_list->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
     // EXPERIMENTAL //
 
-    ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<WGPUTextureView>((shaders.size() % 2) ? *texture_view_B : *texture_view_A)), display_dim);
+    ImGui::Image(
+        reinterpret_cast<ImTextureID>(
+            static_cast<WGPUTextureView>((shaders.size() % 2) ? *texture_view_B : *texture_view_A)
+        ),
+        display_dim
+    );
 
     ImGui::SetCursorPos(ImVec2(20, 20));
     ImGui::Text("fps: %.1f", ImGui::GetIO().Framerate);
 }
 
 
+static std::string rename_buffer;
+static void rename_popup(std::string& name) {
+    ImGui::SetNextWindowSize(ImVec2(400, 150));
+    if (ImGui::BeginPopupModal("Rename Shader", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGuiIO& io = ImGui::GetIO();
+        ImVec2 center = ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
+        ImVec2 window_size = ImGui::GetWindowSize();
+        ImGui::SetWindowPos(ImVec2(center.x - window_size.x * 0.5f, center.y - window_size.y * 0.5f));
+
+        ImGui::Text("Enter new name:");
+        ImGui::Spacing();
+
+        ImGui::PushItemWidth(-FLT_MIN);
+        ImGui::SetKeyboardFocusHere();
+        bool enter_pressed = ImGui::InputText(
+            "##rename_input",
+            &rename_buffer,
+            ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll
+        );
+        ImGui::PopItemWidth();
+
+        // Commit if Enter pressed
+        if (enter_pressed) {
+            name = rename_buffer;
+            ImGui::CloseCurrentPopup();
+        }
+
+        if (ImGui::Button("OK")) {
+            name = rename_buffer;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+            ImGui::CloseCurrentPopup();
+        }
+
+        if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+}
 
 void ShaderManager::display() {
     int to_remove_idx = -1;  // store shader idx user decided to remove or -1 if no remove action
     for (size_t i = 0; i < shaders.size(); i++) {
         std::unique_ptr<ShaderUnion>& shader = shaders[i];
 
-        const std::string shader_name = shader->apply([](auto& s) { return s.name; });
+        std::string& shader_name = shader->apply([](auto& s) -> std::string& { return s.name; });
 
         ImGui::PushID(i);
 
@@ -301,13 +349,20 @@ void ShaderManager::display() {
 
         // Menu bar
         if (ImGui::BeginMenuBar()) {
+            ImVec2 pre_text_pos = ImGui::GetCursorPos();
+            ImVec2 text_size = ImGui::CalcTextSize(shader_name.c_str());
             ImGui::Text("%s", shader_name.c_str());
+            ImGui::SetCursorPos(pre_text_pos);
+            if (ImGui::InvisibleButton("##rename shader", ImVec2(text_size), ImGuiButtonFlags_PressedOnDoubleClick)) {
+                rename_buffer = shader_name;
+                ImGui::OpenPopup("Rename Shader");
+            }
+            rename_popup(shader_name);
 
             // Push all the way to the right
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 
             ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 90);
-
 
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));                     // Transparent when idle
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.5f, 0.5f, 0.5f, 0.5f));  // Gray when hovered

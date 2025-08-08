@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <functional>
 #include <optional>
 #include <tuple>
 #include <type_traits>
@@ -8,43 +9,50 @@
 #include <variant>
 
 
-template <typename... Ts> requires (sizeof...(Ts) > 0)
+template <typename... Ts>
+    requires(sizeof...(Ts) > 0)
 struct TaggedUnion {
-
     static constexpr size_t TagCount = sizeof...(Ts);
 
-    enum class Tag: size_t { None = TagCount };
+    enum class Tag : size_t { None = TagCount };
 
     Tag tag = Tag::None;
 
-    template <typename T> requires (std::is_same_v<T, Ts> || ...)
+    template <typename T>
+        requires(std::is_same_v<T, Ts> || ...)
     static constexpr Tag tag_of = []() constexpr {
         std::size_t index = 0;
         auto _ = ((std::is_same_v<T, Ts> ? true : (++index, false)) || ...);
         return Tag(index);
     }();
 
-    ~TaggedUnion() { destroy(); }
+    ~TaggedUnion() {
+        destroy();
+    }
 
-    template <typename T, typename... Args> requires (std::is_same_v<T, Ts> || ...)
+    template <typename T, typename... Args>
+        requires(std::is_same_v<T, Ts> || ...)
     void set(Args&&... args) {
         destroy();
         new (&storage) T(std::forward<Args>(args)...);
         tag = tag_of<T>;
     }
 
-    template <typename T> requires (std::is_same_v<T, Ts> || ...)
+    template <typename T>
+        requires(std::is_same_v<T, Ts> || ...)
     bool is_current() const {
         return tag_of<T> == tag;
     }
 
-    template <typename T> requires (std::is_same_v<T, Ts> || ...)
+    template <typename T>
+        requires(std::is_same_v<T, Ts> || ...)
     T& get() {
         if (tag != tag_of<T>) throw std::bad_variant_access();
         return *reinterpret_cast<T*>(&storage);
     }
 
-    template <typename T> requires (std::is_same_v<T, Ts> || ...)
+    template <typename T>
+        requires(std::is_same_v<T, Ts> || ...)
     const T& get() const {
         if (tag != tag_of<T>) throw std::bad_variant_access();
         return *reinterpret_cast<const T*>(&storage);
@@ -81,15 +89,20 @@ struct TaggedUnion {
 
     template <typename Func, std::size_t... Is>
     decltype(auto) apply_impl(Func& func, std::index_sequence<Is...>) {
-        using ReturnType = std::invoke_result_t<Func, std::tuple_element_t<0, std::tuple<Ts...>>&>;
+        // using ReturnType = std::invoke_result_t<Func, std::tuple_element_t<0, std::tuple<Ts...>>&>;
+        using _ReturnType = std::invoke_result_t<Func, std::tuple_element_t<0, std::tuple<Ts...>>&>;
 
         static_assert(
-            (std::is_same_v<
-                 ReturnType,
-                 std::invoke_result_t<Func, std::tuple_element_t<Is, std::tuple<Ts...>>&>> &&
-             ...),
+            (std::is_same_v<_ReturnType, std::invoke_result_t<Func, std::tuple_element_t<Is, std::tuple<Ts...>>&>> && ...
+            ),
             "All types of this union does not return the same type for the applied function."
         );
+
+        using ReturnType = std::conditional_t<
+            std::is_reference_v<_ReturnType>,
+            std::reference_wrapper<std::remove_reference_t<_ReturnType>>,
+            _ReturnType>;
+
 
         bool matched = false;
         if constexpr (!std::is_void_v<ReturnType>) {
@@ -97,7 +110,11 @@ struct TaggedUnion {
             (try_apply<Func, ReturnType, Is>(func, matched, result), ...);
             assert(result.has_value());
             ReturnType realsult = std::move(result.value());
-            return realsult;
+            if constexpr (std::is_reference_v<_ReturnType>) {
+                return realsult.get();
+            } else {
+                return realsult;
+            }
         } else {
             (try_apply<Func, Is>(func, matched), ...);
         }

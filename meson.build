@@ -36,6 +36,7 @@ imgui_files = [
     imgui_dir / 'imgui_tables.cpp',
     imgui_dir / 'backends/imgui_impl_glfw.cpp',
     imgui_dir / 'backends/imgui_impl_wgpu.cpp',
+    imgui_dir / 'misc/cpp/imgui_stdlib.cpp',
 ]
 pfd_dir = 'portable-file-dialogs'
 icon_headers_dir = 'IconFontCppHeaders'

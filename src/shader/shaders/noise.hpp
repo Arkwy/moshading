@@ -12,6 +12,7 @@
 
 template <>
 struct Shader<ShaderKind::Noise> : public ShaderBase<Shader<ShaderKind::Noise>> {
+    constexpr static const char* const default_name = "noise";
     Shader(const std::string& name, const Context& ctx)
         : ShaderBase<Shader<ShaderKind::Noise>>(name, ctx.shader_source_cache.get(fullscreen_vertex), ctx.shader_source_cache.get(noise), ctx) {}
 

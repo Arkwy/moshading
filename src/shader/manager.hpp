@@ -149,7 +149,7 @@ struct ShaderManager {
     bool try_creation_dialog(ShaderKind k) {
         if (k == K) {
             if (ImGui::Button("Add")) {
-                add_shader<Shader<K>>("default name", ctx);
+                add_shader<Shader<K>>(Shader<K>::default_name, ctx);
                 adding_shader = false;
             }
             return true;

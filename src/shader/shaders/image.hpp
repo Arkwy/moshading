@@ -17,6 +17,7 @@
 
 template <>
 struct Shader<ShaderKind::Image> : public ShaderBase<Shader<ShaderKind::Image>> {
+    constexpr static const char* const default_name = "image";
     constexpr static const ResourceKind RESOURCES[1] = {ResourceKind::Image};
     struct alignas(16) Uniforms {
         union {
