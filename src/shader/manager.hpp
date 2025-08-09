@@ -17,6 +17,7 @@
 #include "shaders/dithering.hpp"
 #include "shaders/image.hpp"
 #include "shaders/noise.hpp"
+#include "shaders/scanlines.hpp"
 #include "src/context.hpp"
 #include "src/context/resource.hpp"
 #include "src/file_loader.hpp"

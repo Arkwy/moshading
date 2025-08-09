@@ -12,6 +12,7 @@ embed_shaders = custom_target(
     output: ['shaders_code.cpp', 'shaders_code.hpp'],
     command: ['python', meson.current_source_dir() / 'utils/embed_shaders.py', '@OUTPUT@', meson.current_source_dir() / 'shaders/'],
     build_always_stale: not is_debug,
+    # build_always_stale: true,
 )
 embed_shaders_dep = declare_dependency(sources: embed_shaders)
 

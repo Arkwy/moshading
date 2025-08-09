@@ -19,7 +19,7 @@ struct Shader<ShaderKind::Dithering> : public ShaderBase<Shader<ShaderKind::Dith
           ) {}
 
     enum class Mode : int { Threshold, Random, Halftone, Bayer, VoidAndCluster };
-    const char* modes[5] = {"Threshold", "Random", "Halftone", "Ordered (bayer)", "Ordered (void-and-cluster)"};
+    const char* modes[4] = {"Threshold", "Random", "Halftone", "Ordered (bayer)"};
 
     struct alignas(16) Uniforms {
         Mode mode = Mode::Threshold;

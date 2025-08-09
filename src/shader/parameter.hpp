@@ -187,10 +187,11 @@ template <typename T>
 using opt = std::conditional_t<std::is_void_v<T>, std::monostate, std::optional<T>>;
 
 template <typename OptChild>
-void display_if_present(OptChild& maybe_child) {
+bool display_if_present(OptChild& maybe_child) {
     if constexpr (!std::is_same_v<std::remove_const_t<OptChild>, std::monostate>) {
-        if (maybe_child) maybe_child.value().display();
+        if (maybe_child.has_value()) return maybe_child.value().display();
     }
+    return false; 
 }
 
 template <WidgetKind W, WidgetGroupType Childs = void>
@@ -219,13 +220,11 @@ struct Feature {
 };
 
 
-#define STRINGIFY(x) #x
-
-template <size_t I = 0, WidgetGroupType... WGs>
-bool display_indexed(size_t index, const std::tuple<WGs...>& t) {
-    if constexpr (I < sizeof...(WGs)) {
+template <size_t I = 0, typename... OptChilds>
+bool display_indexed(size_t index, const std::tuple<OptChilds...>& t) {
+    if constexpr (I < sizeof...(OptChilds)) {
         if (index == I) {
-            return std::get<I>(t).display();
+            return display_if_present(std::get<I>(t));
         } else {
             return display_indexed<I + 1>(index, t);
         }
@@ -239,7 +238,7 @@ template <WidgetKind W, WidgetGroupType... Childs>
 struct Choice {
     const std::string name;
     const std::array<std::string, sizeof...(Childs)> values;
-    const std::tuple<Childs...> childs;
+    const std::tuple<opt<Childs>...> childs;
 
     unsigned int& state;
 
@@ -247,7 +246,7 @@ struct Choice {
         const std::string& name,
         unsigned int& state,
         const std::array<std::string, sizeof...(Childs)>& values,
-        Childs&&... childs
+        opt<Childs>&&... childs
     )
         : name(name), values(values), childs(childs...), state(state) {}
 

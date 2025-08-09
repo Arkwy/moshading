@@ -9,7 +9,7 @@
 #include "src/context.hpp"
 #include "src/tagged_union.hpp"
 
-#define SHADER_KINDS X(ChromaticAbberation), X(Image), X(Noise), X(Dithering)
+#define SHADER_KINDS X(ChromaticAbberation), X(Image), X(Noise), X(Dithering), X(Scanlines)
 
 #define X(name) name
 enum class ShaderKind { SHADER_KINDS };

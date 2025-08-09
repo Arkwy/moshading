@@ -11,7 +11,7 @@ struct Uniforms {
 
 
 struct DitherUniforms {
-    mode: i32,  // 0 = threshold, 1 = random, 2 = halftone, 3 = ordered (bayer), 4 = ordered (void-and-cluster)
+    mode: i32,  // 0 = threshold, 1 = random, 2 = halftone, 3 = ordered (bayer)
     control: u32, // each bit represents a bool value, 1=color mode, 2=random use time, 4 = ??
     threshold: f32,
     threshold_rgb: vec3<f32>,

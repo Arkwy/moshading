@@ -352,18 +352,10 @@ void ShaderManager::display() {
             ImVec2 pre_text_pos = ImGui::GetCursorPos();
             ImVec2 text_size = ImGui::CalcTextSize(shader_name.c_str());
             ImGui::Text("%s", shader_name.c_str());
-            ImGui::SetCursorPos(pre_text_pos);
-            if (ImGui::InvisibleButton("##rename shader", ImVec2(text_size), ImGuiButtonFlags_PressedOnDoubleClick)) {
-                rename_buffer = shader_name;
-                ImGui::OpenPopup("Rename Shader");
-            }
-            rename_popup(shader_name);
 
-            // Push all the way to the right
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 
             ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 90);
-
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));                     // Transparent when idle
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.5f, 0.5f, 0.5f, 0.5f));  // Gray when hovered
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.5f, 0.5f, 0.5f));  // Same as hovered (optional)
@@ -390,6 +382,14 @@ void ShaderManager::display() {
 
             ImGui::PopStyleColor(3);
             ImGui::PopStyleVar(1);
+
+            // rename button, placed after other buttons to give them priority
+            ImGui::SetCursorPos(pre_text_pos);
+            if (ImGui::InvisibleButton("##rename shader", ImVec2(text_size), ImGuiButtonFlags_PressedOnDoubleClick)) {
+                rename_buffer = shader_name;
+                ImGui::OpenPopup("Rename Shader");
+            }
+            rename_popup(shader_name);
 
             ImGui::EndMenuBar();
         }
