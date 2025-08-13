@@ -166,7 +166,7 @@ struct Resource<ResourceKind::Image> {
 
 
     template <typename T>
-        requires std::is_same_v<const std::shared_ptr<void>, decltype(std::declval<T>().lifetime_token)>
+        requires std::is_same_v<const std::shared_ptr<std::monostate>, decltype(std::declval<T>().lifetime_token)>
     void subscribe(const std::function<void()>& callback, T& subscriber) const {
         update_callbacks.push_back(SafeCallback{
             .subscriber_lifetime = subscriber.lifetime_token,

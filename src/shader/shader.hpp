@@ -20,7 +20,7 @@ template <typename Derived>
 struct ShaderBase {
     constexpr static const ResourceKind RESOURCES[0] = {};
     constexpr static const char* const default_name = "unamed shader";
-    const std::shared_ptr<void> lifetime_token; // lifetime tracker used for auto unsubscription to resources updates
+    const std::shared_ptr<std::monostate> lifetime_token = std::make_shared<std::monostate>(); // lifetime tracker used for auto unsubscription to resources updates
 
     const Context& ctx;
     std::string name;
@@ -91,7 +91,7 @@ struct ShaderBase {
     ShaderBase(
         const std::string& name, const ShaderSource& vertex_source, const ShaderSource& frag_source, const Context& ctx
     )
-        :  lifetime_token(), ctx(ctx), name(name), vertex_source(vertex_source), frag_source(frag_source) {}
+        : ctx(ctx), name(name), vertex_source(vertex_source), frag_source(frag_source) {}
 
     wgpu::raii::PipelineLayout make_pipeline_layout(
         const Context& ctx, const wgpu::BindGroupLayout& default_bind_group_layout
