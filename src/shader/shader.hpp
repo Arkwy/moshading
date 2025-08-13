@@ -20,7 +20,9 @@ template <typename Derived>
 struct ShaderBase {
     constexpr static const ResourceKind RESOURCES[0] = {};
     constexpr static const char* const default_name = "unamed shader";
-    const std::shared_ptr<std::monostate> lifetime_token = std::make_shared<std::monostate>(); // lifetime tracker used for auto unsubscription to resources updates
+
+    // lifetime tracker used for auto unsubscription to resources updates
+    const std::shared_ptr<std::monostate> lifetime_token = std::make_shared<std::monostate>();
 
     const Context& ctx;
     std::string name;

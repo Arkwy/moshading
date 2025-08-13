@@ -12,48 +12,12 @@
 #include <webgpu/webgpu-raii.hpp>
 
 #include "src/context/resource.hpp"
+#include "src/context/resource_manager.hpp"
 #include "src/file_loader.hpp"
 
 
 App::App(Context& ctx) : ctx(ctx), shader_manager(ctx) {}
 
-
-void ressource_manager_display(ResourceManager& ressource_manager) {
-    static FileLoader file_loader;
-
-    bool can_open_dialog = file_loader.check();
-
-    ImGui::BeginDisabled(!can_open_dialog);
-    if (ImGui::Button("Import")) {
-        file_loader.open_dialog<ResourceKind::Image>(
-#ifdef __EMSCRIPTEN__
-            [&](const char* name, uint8_t* data, size_t len) {
-                ressource_manager.add_image(name, Resource<ResourceKind::Image>::Handle{.data = data, .len = len});
-            }
-#else
-            [&](const std::string& file) {
-                std::filesystem::path path = file;
-                ressource_manager.add_image(path.stem(), path);
-            }
-#endif
-        );
-    }
-    ImGui::EndDisabled();
-
-    float vignette_size = 200;
-    float max_cursor_x = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - vignette_size;
-    for (auto& [resource_id, index] : ressource_manager.images_index_map) {
-        auto& resource = ressource_manager.images[index];
-        ImGui::BeginChild(
-            std::format("{}{}", resource.name, resource_id).c_str(),
-            ImVec2(vignette_size, vignette_size)
-        );
-        resource.display();
-        ImGui::EndChild();
-        ImGui::SameLine();
-        if (ImGui::GetCursorPosX() > max_cursor_x) ImGui::NewLine();
-    }
-}
 
 
 void App::display() {
@@ -96,7 +60,7 @@ void App::display() {
     ImGui::End();
 
     ImGui::Begin("resource_manager");
-    ressource_manager_display(ctx.resource_manager);
+    ctx.resource_manager.display();
     ImGui::End();
 
     ImGui::Begin("shader_display", nullptr, ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar);

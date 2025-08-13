@@ -78,6 +78,13 @@ struct Resource<ResourceKind::Image> {
     }
 
     void update(const Handle& handle, const GPU& gpu, bool upload = true) {
+        if (data.ptr != nullptr) stbi_image_free(data.ptr);
+        if (uploaded) {
+            texture_view->release();
+            texture->release();
+            uploaded = false;
+        }
+
         data = load(handle);
 
         if (!data.ptr) {
@@ -210,48 +217,18 @@ struct Resource<ResourceKind::Image> {
 
         ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<WGPUTextureView>(*texture_view)), display_dim);
 
+        ImGui::SetCursorPos(ImVec2(
+            -(display_dim.x - display_region.x) * 0.5 + start_x,
+            -(display_dim.y - display_region.y) * 0.5 + start_y
+        ));
+        if (ImGui::InvisibleButton("## change image", display_dim, ImGuiButtonFlags_PressedOnDoubleClick)) {
+        }
+
         ImGui::SetCursorPosX((display_region.x - text_size.x) / 2);
         ImGui::Text("%s", name.c_str());
+
     }
 };
 
 
 
-struct ResourceManager {
-    const GPU& gpu;
-    wgpu::raii::Sampler default_texture_sampler;
-
-    ResourceManager(const GPU& gpu) : gpu(gpu) {
-        wgpu::SamplerDescriptor default_texture_sampler_desc = {};
-        default_texture_sampler_desc.addressModeU = wgpu::AddressMode::ClampToEdge;
-        default_texture_sampler_desc.addressModeV = wgpu::AddressMode::ClampToEdge;
-        default_texture_sampler_desc.addressModeW = wgpu::AddressMode::ClampToEdge;
-        default_texture_sampler_desc.magFilter = wgpu::FilterMode::Linear;
-        default_texture_sampler_desc.minFilter = wgpu::FilterMode::Linear;
-        default_texture_sampler_desc.mipmapFilter = wgpu::MipmapFilterMode::Nearest;
-        default_texture_sampler_desc.maxAnisotropy = 1;
-
-        default_texture_sampler = gpu.get_device().createSampler(default_texture_sampler_desc);
-    }
-
-    size_t add_image(const std::string& name, const Resource<ResourceKind::Image>::Handle& handle) {
-        images.push_back(Resource<ResourceKind::Image>(name, handle, gpu));
-        size_t id = next_id();
-        images_index_map[id] = images.size() - 1;
-        return id;
-    }
-
-    const Resource<ResourceKind::Image>& get_image(size_t id) const {
-        return images[images_index_map.at(id)];
-    }
-
-
-    // private:
-    std::unordered_map<size_t, size_t> images_index_map;
-    std::vector<Resource<ResourceKind::Image>> images;
-
-    static size_t next_id() {
-        static size_t id = 0;
-        return id++;
-    }
-};

@@ -4,7 +4,7 @@
 
 #include "context/gpu.hpp"
 #include "context/render_target.hpp"
-#include "context/resource.hpp"
+#include "context/resource_manager.hpp"
 #include "context/shader_source.hpp"
 
 struct Context {
