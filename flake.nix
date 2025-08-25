@@ -121,7 +121,6 @@
                     chmod u+rwX -R $(pwd)/.emscripten_cache
                   fi
                   export EM_CACHE="$(pwd)/.emscripten_cache"
-                  echo ${pkgs.ffmpeg_6-headless}
                 '';
 
                 LD_LIBRARY_PATH =
