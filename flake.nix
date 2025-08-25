@@ -78,7 +78,7 @@
                   #wasm
                   emscripten
 
-                  # rendering things
+                  # libs
                   ## general
                   glew
                   glfw
@@ -87,6 +87,7 @@
                   vulkan-loader
                   vulkan-tools
                   vulkan-headers
+                  ffmpeg
                   ## linux
                   wayland-scanner
                   wayland
@@ -120,6 +121,7 @@
                     chmod u+rwX -R $(pwd)/.emscripten_cache
                   fi
                   export EM_CACHE="$(pwd)/.emscripten_cache"
+                  echo ${pkgs.ffmpeg_6-headless}
                 '';
 
                 LD_LIBRARY_PATH =
